@@ -1,6 +1,10 @@
 # Requirements.txt to replicate the exact package environment (not suitable for 
 # users who install this as a component of their work---this will probably
 # cause dependency hell (Google it)).
-matplotlib==3.3.2
+matplotlib
+numpy
+pandas
+sampex==1.0.0
+aurora-asi-lib==0.12.1
 
 -e . # Install this project
