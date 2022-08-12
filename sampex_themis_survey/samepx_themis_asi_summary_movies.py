@@ -20,7 +20,7 @@ alt = 110  # km
 box = (10, 10)  # km
 x_labels = {'L':'L_Shell', 'MLT':'MLT', 'Geo Lat':'GEO_Lat', 'Geo Lon':'GEO_Long'}
 
-conjunction_dir = pathlib.Path(config.PROJECT_DIR, 'data')
+conjunction_dir = pathlib.Path(config['data_dir'], 'data')
 conjunction_path = conjunction_dir / f'sampex_themis_asi_conjunctions_filtered.csv'
 
 conjunction_list = pd.read_csv(conjunction_path)

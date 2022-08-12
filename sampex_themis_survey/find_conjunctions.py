@@ -17,7 +17,7 @@ themis_url = 'https://data.phys.ucalgary.ca/sort_by_project/THEMIS/asi/stream0/'
 
 
 # Prepare the data/conjunction directory.
-save_dir = pathlib.Path(config.PROJECT_DIR, 'data', 'conjunctions')
+save_dir = pathlib.Path(config['data_dir'], 'data', 'conjunctions')
 if not save_dir.exists():
     save_dir.mkdir(parents=True)
     print(f'Made {save_dir} directory.')

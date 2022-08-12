@@ -21,7 +21,7 @@ alt = 110  # km
 box = (10, 10)  # km
 x_labels = {'L':'L_Shell', 'MLT':'MLT', 'Geo Lat':'GEO_Lat', 'Geo Lon':'GEO_Long'}
 
-conjunction_dir = pathlib.Path(config.PROJECT_DIR, 'data')
+conjunction_dir = pathlib.Path(config['data_dir'], 'data')
 conjunction_path = conjunction_dir / f'sampex_themis_asi_themis_aurorax_conjunctions.xlsx'
 
 conjunction_list = pd.read_excel(conjunction_path, skiprows=1)
