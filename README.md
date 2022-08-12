@@ -1,5 +1,9 @@
 # Introduction
-This is the package containing the sampex_themis_survey code
+This is the package containing the sampex_themis_survey code.
+
+
+# Dependencies
+Before you can run many of these scripts, you will need to install [IRBEM](https://github.com/PRBEM/IRBEM). See their installation instructions for more information.
 
 # Installation
 - To install as a developer run:
