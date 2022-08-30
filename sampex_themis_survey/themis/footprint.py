@@ -3,6 +3,7 @@ Calculate the THEMIS probe footprint.
 """
 import dateutil.parser
 import pathlib
+from datetime import datetime
 
 import IRBEM
 import numpy as np
@@ -10,15 +11,21 @@ import pandas as pd
 
 import sampex
 # import pyspedas
+import cdflib
+
+re_km = 6371
 
 class THEMIS_footprint:
     def __init__(self, probe, time_range):
         """"
-        Load SAMPEX attitude data and calculate its footprint.
+        Load THEMIS state data and calculate its footprint.
 
         Parameters
         ----------
-        day: datetime or str
+        probe: str
+            What 
+        time_range: datetime
+            The data time range
         """
         self.probe = probe
         self.time_range = time_range
@@ -29,7 +36,9 @@ class THEMIS_footprint:
             )
         self.data_dir = pathlib.Path(pathlib.Path.home(), 'themis-data', 
             f'th{self.probe.lower()}', 'state')
-        self.state_files = self._get_state()
+
+        self.state_path = self._get_state()
+        self.state = self._load_state()
         return
 
     def map(self, alt=110, hemi_flag=1):
@@ -48,14 +57,14 @@ class THEMIS_footprint:
             +2   = opposite magnetic hemisphere as starting point
         """
         m = IRBEM.MagFields(kext='OPQ77')
-        _all = np.zeros_like(self.attitude.loc[:, ['Altitude', 'GEO_Lat', 'GEO_Long']])
+        _all = np.zeros_like(self.lla)
 
-        for i, (time, row) in enumerate(self.attitude.iterrows()):
-            X = {'Time':time, 'x1':row['Altitude'], 'x2':row['GEO_Lat'], 'x3':row['GEO_Long']}
+        for i, (time, coord) in enumerate(zip(self.time, self.lla)):
+            X = {'Time':time, 'x1':coord[0], 'x2':coord[1], 'x3':coord[2]}
             _all[i, :] = m.find_foot_point(X, {}, alt, hemi_flag)['XFOOT']
         _all[_all == -1E31] = np.nan
-        self.attitude.loc[:, ['Altitude', 'GEO_Lat', 'GEO_Long']] = _all
-        return self.attitude
+        self.footprint = np.roll(_all, -1, axis=1)
+        return self.footprint
 
     def _get_state(self):
         """
@@ -77,7 +86,7 @@ class THEMIS_footprint:
         """
         base_url = (
             f'http://themis.ssl.berkeley.edu/data/themis/'
-            f'th{self.probe}/l{self.level}/state/'
+            f'th{self.probe.lower()}/l{self.level}/state/'
             f'{self.time_range[0].year}/'
                     )
         downloader = sampex.Downloader(
@@ -85,4 +94,29 @@ class THEMIS_footprint:
             download_dir=self.data_dir
             )
         matched_files = downloader.ls(self.state_file_pattern)
-        return
+        # Find the newest version
+        sorted_files = sorted(matched_files, key=lambda d: d.name())
+        return sorted_files[-1].download()
+
+    def _load_state(self):
+        """
+        Load the CDF file.
+        """
+        self.state = cdflib.CDF(self.state_path)
+
+        self.time = np.array(self.state.varget(f'th{self.probe.lower()}_state_time'), 
+            dtype='datetime64[s]')
+        # Convert to datetime.datetime for IRBEM
+        self.time = pd.to_datetime(self.time).to_pydatetime()
+        self.gei = self.state.varget(f'th{self.probe.lower()}_pos')/re_km
+
+        # Time filter
+        valid_idt = np.where(
+            (self.time >= self.time_range[0]) & 
+            (self.time <= self.time_range[1])
+            )[0]
+        self.time = self.time[valid_idt]
+        self.gei = self.gei[valid_idt, :]
+        
+        self.lla = IRBEM.Coords().transform(self.time, self.gei, 'GEI', 'GDZ')
+        return 
