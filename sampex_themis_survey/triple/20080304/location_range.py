@@ -11,7 +11,7 @@ import matplotlib.pyplot as plt
 from sampex_themis_survey.themis.footprint import THEMIS_footprint
 
 themis_asis = ['FSMI']#, 'YKNF']
-themis_probes = ['D', 'E', 'C']  # And 'B', 'C'
+themis_probes = ['D', 'E', 'C']  # Also try 'B', 'C'
 alt = 110  # km
 # time_range = [datetime(2008, 3, 4, 4, 0, 0), datetime(2008, 3, 4, 6, 0, 0)]
 time_range = [datetime(2008, 3, 4, 5, 49, 39), datetime(2008, 3, 4, 5, 55, 0)]
