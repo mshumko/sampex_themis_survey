@@ -118,8 +118,6 @@ s = FBK(themis_probes[0], plot_range[0])
 s.load()
 s.spectrum(ax=cx[2], 
     pcolormesh_kwargs={'norm':matplotlib.colors.LogNorm(vmin=1E-4, vmax=0.1)})
-cx[2].text(0, 0.8, f'({string.ascii_uppercase[n+2]}) THEMIS-FBK', 
-        transform=cx[2].transAxes, va='top', color='white', fontsize=15)
 cx[2].set_xlabel('Time [HH:MM]')
 cx[2].set_ylabel('Frequency [Hz]') 
 cx[2].set_yscale('log')
@@ -132,9 +130,11 @@ plot_labels = (
     'THEMIS-SST Ions',
     'THEMIS-FBK'
 )
-for cx_i in cx:
-    cx.text(0, 0.8, f'({string.ascii_uppercase[n+1]}) THEMIS-SST Electrons', 
-        transform=cx.transAxes, va='top', color='white', fontsize=15)
+themis_label_y = (0, 0, 0.95)
+
+for i, (cx_i, plot_label, y) in enumerate(zip(cx, plot_labels, themis_label_y), start=n+1):
+    cx_i.text(0, y, f'({string.ascii_uppercase[i]}) {plot_label}', 
+        transform=cx_i.transAxes, va='bottom', color='white', fontsize=15)
 
 # cx = fig.add_subplot(spec[-3, :], sharex=bx)
 # # cx.get_shared_x_axes().join(bx, cx)
