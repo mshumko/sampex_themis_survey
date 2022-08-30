@@ -108,7 +108,7 @@ s.load()
 _, p = s.spectrum(ax=cx[1], 
     pcolormesh_kwargs={'norm':matplotlib.colors.LogNorm(vmin=0.1, vmax=1E6)}
     )
-plt.colorbar(p, ax=cx[1], cax=cx_c, label='Proton flux')
+plt.colorbar(p, ax=cx[1], cax=cx_c, label='ion flux')
 cx[1].set_xlim(plot_range)
 cx[1].set_ylabel('Energy [keV]')
 cx[1].set_yscale('log')
@@ -126,61 +126,15 @@ time_format = matplotlib.dates.DateFormatter('%H:%M')
 cx[2].xaxis.set_major_formatter(time_format)
 
 plot_labels = (
-    'THEMIS-SST Electrons',
-    'THEMIS-SST Ions',
+    'THEMIS-SST electrons',
+    'THEMIS-SST ions',
     'THEMIS-FBK'
 )
-themis_label_y = (0, 0, 0.95)
+themis_label_y = (0, 0, 0.8)
 
 for i, (cx_i, plot_label, y) in enumerate(zip(cx, plot_labels, themis_label_y), start=n+1):
     cx_i.text(0, y, f'({string.ascii_uppercase[i]}) {plot_label}', 
         transform=cx_i.transAxes, va='bottom', color='white', fontsize=15)
-
-# cx = fig.add_subplot(spec[-3, :], sharex=bx)
-# # cx.get_shared_x_axes().join(bx, cx)
-# dx = cx.inset_axes([1.01, 0, 0.02, 1], transform=cx.transAxes)
-# s = SST(themis_probes[0], plot_range[0], species='e')
-# s.load()
-# _, p = s.spectrum(ax=cx, 
-#     pcolormesh_kwargs={'norm':matplotlib.colors.LogNorm(vmin=1E2, vmax=5E5)}
-#     )
-# plt.colorbar(p, ax=cx, cax=dx, label='Electron flux')
-# cx.set_xlim(plot_range)
-# cx.set_ylabel('Energy [keV]')
-# cx.set_yscale('log')
-# cx.text(0, 0.8, f'({string.ascii_uppercase[n+1]}) THEMIS-SST Electrons', 
-#         transform=cx.transAxes, va='top', color='white', fontsize=15)
-# cx.tick_params(axis="x", labelbottom=False)      
-
-# ex = fig.add_subplot(spec[-3, :], sharex=cx)
-# # cx.get_shared_x_axes().join(bx, cx)
-# fx = ex.inset_axes([1.01, 0, 0.02, 1], transform=ex.transAxes)
-# s = SST(themis_probes[0], plot_range[0], species='i')
-# s.load()
-# _, p = s.spectrum(ax=fx, 
-#     pcolormesh_kwargs={'norm':matplotlib.colors.LogNorm(vmin=0.1, vmax=1E6)}
-#     )
-# plt.colorbar(p, ax=fx, cax=ex, label='Proton flux')
-# fx.set_xlim(plot_range)
-# fx.set_ylabel('Energy [keV]')
-# fx.set_yscale('log')
-# fx.text(0, 0.8, f'({string.ascii_uppercase[n+2]}) THEMIS-SST Protons', 
-#         transform=cx.transAxes, va='top', color='white', fontsize=15)
-# cx.tick_params(axis="x", labelbottom=False)    
-
-# fx = fig.add_subplot(spec[-1, :], sharex=cx)
-# s = FBK(themis_probes[0], plot_range[0])
-# s.load()
-# s.spectrum(ax=fx, 
-#     pcolormesh_kwargs={'norm':matplotlib.colors.LogNorm(vmin=1E-4, vmax=0.1)})
-# fx.text(0, 0.8, f'({string.ascii_uppercase[n+2]}) THEMIS-FBK', 
-#         transform=fx.transAxes, va='top', color='white', fontsize=15)
-# fx.set_xlabel('Time [HH:MM]')
-# fx.set_ylabel('Frequency [Hz]') 
-# fx.set_yscale('log')
-# fx.set_ylim(1, 1E3)
-# time_format = matplotlib.dates.DateFormatter('%H:%M')
-# fx.xaxis.set_major_formatter(time_format)
 
 plt.suptitle(f'Example Triple Conjunction | THEMIS-THEMIS ASI-SAMPEX', fontsize=15)
 
