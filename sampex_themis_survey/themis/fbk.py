@@ -1,8 +1,5 @@
-"""
-Download and load THEMIS-SST data
-"""
 import pathlib
-from datetime import datetime
+from datetime import datetime, timedelta
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -12,10 +9,10 @@ import sampex
 import cdflib
 
 
-class SST:
-    def __init__(self, probe, day, species='e'):
+class FBK:
+    def __init__(self, probe, day):
         """"
-        Load THEMIS SST data.
+        Load THEMIS FBK data.
 
         Parameters
         ----------
@@ -28,52 +25,47 @@ class SST:
         self.day = day
         self.date_str = self.day.strftime('%Y%m%d')
         self.level = 2
-        self.species = species.lower()
-        assert self.species.lower() in ['e', 'i']
         self.file_pattern = (
-            f'th{self.probe}_l{self.level}_sst_{self.date_str}*.cdf'
+            f'th{self.probe}_l{self.level}_fbk_{self.date_str}*.cdf'
             )
         self.data_dir = pathlib.Path(pathlib.Path.home(), 'themis-data', 
-            f'th{self.probe}', 'sst')
+            f'th{self.probe}', 'fbk')
 
-        self.sst_path = self._get_sst()
+        self.fbk_path = self._get_fbk()
         return
 
     def load(self):
         """
         Load the CDF file.
         """
-        self.sst = cdflib.CDF(self.sst_path)  # FYI self.sst.cdf_info()['zVariables']
+        self.fbk = cdflib.CDF(self.fbk_path)  # FYI self.fbk.cdf_info()['zVariables']
 
-        self.time = np.array(self.sst.varget(f'th{self.probe}_ps{self.species}f_time'), 
+        self.time = np.array(self.fbk.varget(f'th{self.probe}_fb_scm1_time'), 
             dtype='datetime64[s]')
-        return self.time, self.sst
+        return self.time, self.fbk
 
     def spectrum(self, ax=None, pcolormesh_kwargs={}):
         if ax is None:
             ax = plt.subplot()
-        E = self.sst.varget(f'th{self.probe}_ps{self.species}f_en_eflux_yaxis')[0, :]/1E3
-        # Finite energies
-        ide = np.where(np.isfinite(E))[0]
-        E = E[ide]
-        eflux = self.sst.varget(f'th{self.probe}_ps{self.species.lower()}f_en_eflux')
-        eflux = eflux[:, ide]
-        p = ax.pcolormesh(self.time, E, eflux.T, **pcolormesh_kwargs)
+
+        f = self.fbk.varget(f'th{self.probe}_fb_yaxis')
+        scm1 = self.fbk.varget(f'th{self.probe}_fb_scm1')
+        p = ax.pcolormesh(self.time, f, scm1.T, **pcolormesh_kwargs)
         return ax, p
         
-    def _get_sst(self):
+    def _get_fbk(self):
         """
-        Looks for a local SST cdf file and downloads it if not not found.
+        Looks for a local fbk cdf file and downloads it if not not found.
         """
         paths = list(self.data_dir.rglob(self.file_pattern))
         if len(paths) == 0:
             # Look online
-            path = self._download_sst()
+            path = self._download_fbk()
         else:
             path = paths[0]
         return path
 
-    def _download_sst(self):
+    def _download_fbk(self):
         """
         Downloads the THEMIS probe data.
 
@@ -81,7 +73,7 @@ class SST:
         """
         base_url = (
             f'http://themis.ssl.berkeley.edu/data/themis/'
-            f'th{self.probe}/l{self.level}/sst/'
+            f'th{self.probe}/l{self.level}/fbk/'
             f'{self.day.year}/'
                     )
         downloader = sampex.Downloader(
@@ -94,7 +86,7 @@ class SST:
         return sorted_files[-1].download()
 
 if __name__ == '__main__':
-    s = SST('E', datetime(2008, 3, 4, 4, 0, 0),species='i')
+    s = FBK('C', datetime(2008, 3, 4, 4, 0, 0))
     s.load()
-    s.spectrum(pcolormesh_kwargs={'norm':matplotlib.colors.LogNorm(vmin=0.1, vmax=1E6)})
+    s.spectrum(pcolormesh_kwargs={'norm':matplotlib.colors.LogNorm(vmin=1E-4, vmax=0.1)})
     plt.show()
