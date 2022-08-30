@@ -44,8 +44,8 @@ for i, (image_time, subplot_letter) in enumerate(z):
         if themis_asi_location == themis_asi_locations[0]:
             nearest_asi_image_times.append(t)
     
-    ax[i].text(0, 1, f'({subplot_letter}) {image_time.strftime("%H:%M:%S")}', 
-        transform=ax[i].transAxes, va='top', color='green', fontsize=15)
+    ax[i].text(0, 0, f'({subplot_letter}) {image_time.strftime("%H:%M:%S")}', 
+        transform=ax[i].transAxes, va='bottom', color='white', fontsize=15)
 
 themis_footprints = {}
 colors = ['c', 'g', 'b', 'k']
@@ -70,6 +70,10 @@ for i, themis_asi_location in enumerate(themis_asi_locations, start=1):
         ax=bx, map_alt=alt, aacgm=True)
     bx.set_xlim(times[0], times[-1])
     bx.set_title('')
+    bx.text(0, 1, f'({string.ascii_uppercase[n+i-1]}) THEMIS ASI keogram', 
+        transform=bx.transAxes, va='top', color='white', fontsize=15)
+    bx.set_ylabel('Magnetic lat [geg]')
+    bx.set_ylim(66, 72)
 
 plt.suptitle(f'Example Triple Conjunction | THEMIS probes | THEMIS ASI | SAMPEX', fontsize=15)
 
