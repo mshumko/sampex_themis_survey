@@ -41,7 +41,7 @@ class THEMIS_footprint:
         self.state = self._load_state()
         return
 
-    def map(self, alt=110, hemi_flag=1):
+    def map(self, alt=110, hemi_flag=1, model='OPQ77', mag_input={}):
         """
         Map self.lla along the magnetic field line to alt using IRBEM.MagFields.find_foot_print.
 
@@ -56,12 +56,12 @@ class THEMIS_footprint:
             -1   = southern magnetic hemisphere
             +2   = opposite magnetic hemisphere as starting point
         """
-        m = IRBEM.MagFields(kext='OPQ77')
+        m = IRBEM.MagFields(kext=model)
         _all = np.zeros_like(self.lla)
 
         for i, (time, coord) in enumerate(zip(self.time, self.lla)):
             X = {'Time':time, 'x1':coord[0], 'x2':coord[1], 'x3':coord[2]}
-            _all[i, :] = m.find_foot_point(X, {}, alt, hemi_flag)['XFOOT']
+            _all[i, :] = m.find_foot_point(X, mag_input, alt, hemi_flag)['XFOOT']
         _all[_all == -1E31] = np.nan
         self.footprint = np.roll(_all, -1, axis=1)
         return self.footprint
