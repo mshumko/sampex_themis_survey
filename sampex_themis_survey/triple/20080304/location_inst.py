@@ -24,11 +24,12 @@ times = [
     datetime(2008, 3, 4, 5, 50, 0),
     datetime(2008, 3, 4, 6, 0, 0)
     ]
+plot_range = (datetime(2008, 3, 4, 5, 0, 0), datetime(2008, 3, 4, 6, 30, 0))
 lat_bounds=(52, 70)
-lon_bounds=(-128, -90)
+lon_bounds=(-125, -100)
 
 n = len(times)
-fig = plt.figure(figsize=(12, 5))
+fig = plt.figure(figsize=(12, 7))
 spec = gridspec.GridSpec(nrows=len(themis_asi_locations)+2, ncols=n, figure=fig, height_ratios=(2, 1, 1))
 
 ax = n*[None]
@@ -50,7 +51,7 @@ for i, (image_time, subplot_letter) in enumerate(z):
         transform=ax[i].transAxes, va='bottom', color='white', fontsize=15)
 
 themis_footprints = {}
-colors = ['c', 'g', 'b', 'k']
+colors = ['g', 'c', 'b', 'k']
 for themis_probe, color in zip(themis_probes, colors):
     f = THEMIS_footprint(themis_probe, (times[0], times[-1]))
     f.map(alt=alt, model='T89', mag_input={'Kp':1.667})
@@ -69,7 +70,7 @@ for themis_probe, color in zip(themis_probes, colors):
 for i, themis_asi_location in enumerate(themis_asi_locations, start=1):
     bx = fig.add_subplot(spec[i, :])
     bx.tick_params(axis="x", labelbottom=False)
-    asilib.plot_keogram('THEMIS', themis_asi_location, (times[0], times[-1]), 
+    asilib.plot_keogram('THEMIS', themis_asi_location, plot_range, 
         ax=bx, map_alt=alt, aacgm=True)
     bx.set_xlim(times[0], times[-1])
     bx.set_title('')
@@ -80,16 +81,20 @@ for i, themis_asi_location in enumerate(themis_asi_locations, start=1):
 
 cx = fig.add_subplot(spec[-1, :])
 cx.get_shared_x_axes().join(bx, cx)
-dx = cx.inset_axes([1.04, 0, 0.02, 1], transform=cx.transAxes)
+dx = cx.inset_axes([1.01, 0, 0.02, 1], transform=cx.transAxes)
 s = SST('C', datetime(2008, 3, 4))
 s.load()
 _, p = s.spectrum(ax=cx, 
     pcolormesh_kwargs={'norm':matplotlib.colors.LogNorm(vmin=1E2, vmax=1E5)}
     )
-plt.colorbar(p, ax=cx, cax=dx)
-cx.set_xlim(times[0], times[-1])
+plt.colorbar(p, ax=cx, cax=dx, label='Electron flux')
+cx.set_xlim(plot_range)
+cx.set_ylabel('Energy [keV]')
+cx.set_xlabel('Time')
+cx.set_yscale('log')
 
-plt.suptitle(f'Example Triple Conjunction | THEMIS probes | THEMIS ASI | SAMPEX', fontsize=15)
+plt.suptitle(f'Example Triple Conjunction | THEMIS-THEMIS ASI-SAMPEX', fontsize=15)
 
 # plt.legend()
+plt.subplots_adjust(wspace=0.02, hspace=0.024, left=0.055, right=0.92, top=0.943)
 plt.show()
