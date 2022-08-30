@@ -10,11 +10,13 @@ import asilib
 import sampex
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
+import matplotlib.colors
 
 from sampex_themis_survey.themis.footprint import THEMIS_footprint
+from sampex_themis_survey.themis.sst import SST
 
 themis_asi_locations = ['FSMI']#, 'YKNF']
-themis_probes = ['D', 'E', 'C']  # Also try 'B', 'C'
+themis_probes = ['C'] #['D', 'E', 'C']  # Also try 'B', 'C'
 alt = 110  # km
 times = [
     datetime(2008, 3, 4, 5, 30, 0),
@@ -27,7 +29,7 @@ lon_bounds=(-128, -90)
 
 n = len(times)
 fig = plt.figure(figsize=(12, 5))
-spec = gridspec.GridSpec(nrows=len(themis_asi_locations)+1, ncols=n, figure=fig, height_ratios=(2, 1))
+spec = gridspec.GridSpec(nrows=len(themis_asi_locations)+2, ncols=n, figure=fig, height_ratios=(2, 1, 1))
 
 ax = n*[None]
 nearest_asi_image_times = []
@@ -66,6 +68,7 @@ for themis_probe, color in zip(themis_probes, colors):
 
 for i, themis_asi_location in enumerate(themis_asi_locations, start=1):
     bx = fig.add_subplot(spec[i, :])
+    bx.tick_params(axis="x", labelbottom=False)
     asilib.plot_keogram('THEMIS', themis_asi_location, (times[0], times[-1]), 
         ax=bx, map_alt=alt, aacgm=True)
     bx.set_xlim(times[0], times[-1])
@@ -74,6 +77,17 @@ for i, themis_asi_location in enumerate(themis_asi_locations, start=1):
         transform=bx.transAxes, va='top', color='white', fontsize=15)
     bx.set_ylabel('Magnetic lat [geg]')
     bx.set_ylim(66, 72)
+
+cx = fig.add_subplot(spec[-1, :])
+cx.get_shared_x_axes().join(bx, cx)
+dx = cx.inset_axes([1.04, 0, 0.02, 1], transform=cx.transAxes)
+s = SST('C', datetime(2008, 3, 4))
+s.load()
+_, p = s.spectrum(ax=cx, 
+    pcolormesh_kwargs={'norm':matplotlib.colors.LogNorm(vmin=1E2, vmax=1E5)}
+    )
+plt.colorbar(p, ax=cx, cax=dx)
+cx.set_xlim(times[0], times[-1])
 
 plt.suptitle(f'Example Triple Conjunction | THEMIS probes | THEMIS ASI | SAMPEX', fontsize=15)
 

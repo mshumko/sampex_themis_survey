@@ -1,14 +1,11 @@
 """
 Download and load THEMIS-SST data
 """
-import dateutil.parser
 import pathlib
 from datetime import datetime
 
 import numpy as np
-import pandas as pd
 import matplotlib.pyplot as plt
-import matplotlib.colors
 
 import sampex
 import cdflib
@@ -49,7 +46,7 @@ class SST:
             dtype='datetime64[s]')
         return self.time, self.sst
 
-    def spectrum(self, ax=None):
+    def spectrum(self, ax=None, pcolormesh_kwargs={}):
         if ax is None:
             ax = plt.subplot()
 
@@ -59,7 +56,7 @@ class SST:
         E = E[ide]
         eflux = self.sst.varget(f'th{self.probe}_psef_en_eflux')
         eflux = eflux[:, ide]
-        p = ax.pcolormesh(self.time, E, eflux.T, norm=matplotlib.colors.LogNorm())
+        p = ax.pcolormesh(self.time, E, eflux.T, **pcolormesh_kwargs)
         return ax, p
         
     def _get_sst(self):
