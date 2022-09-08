@@ -77,6 +77,9 @@ class Summary_Plot:
         self._plot_asi_images()
         self._plot_themis_footprint()
         self._plot_keogram()
+        self._plot_sst_e()
+        self._plot_sst_p()
+        self._plot_fbk()
         # self.spec.tight_layout(self.fig)
         # plt.show()
         # plot_labels = (
@@ -175,7 +178,7 @@ class Summary_Plot:
 
         # Electrons
         cx_c = self.cx.inset_axes([1.01, 0, 0.02, 1], transform=self.cx.transAxes)
-        s = SST(self.sc_id, self.time_range, species='e')
+        s = SST(self.sc_id, self.time_range[0], species='e')
         s.load()
         _, p = s.spectrum(ax=self.cx, 
             pcolormesh_kwargs={'norm':matplotlib.colors.LogNorm(vmin=1E2, vmax=5E5)}
@@ -193,7 +196,7 @@ class Summary_Plot:
         self.dx = self.fig.add_subplot(self.spec[3, :], sharex=self.bx) 
         self.dx.tick_params(axis="x", labelbottom=False) 
         dx_c = self.dx.inset_axes([1.01, 0, 0.02, 1], transform=self.dx.transAxes)
-        s = SST(self.sc_id, self.time_range, species='i')
+        s = SST(self.sc_id, self.time_range[0], species='i')
         s.load()
         _, p = s.spectrum(ax=self.dx, 
             pcolormesh_kwargs={'norm':matplotlib.colors.LogNorm(vmin=0.1, vmax=1E6)}
@@ -209,11 +212,12 @@ class Summary_Plot:
         """
         self.ex = self.fig.add_subplot(self.spec[4, :], sharex=self.bx) 
         # self.ex.tick_params(axis="x", labelbottom=False) 
-        dx_c = self.ex.inset_axes([1.01, 0, 0.02, 1], transform=self.ex.transAxes)
-        s = FBK(self.sc_id, self.time_range)
+        ex_c = self.ex.inset_axes([1.01, 0, 0.02, 1], transform=self.ex.transAxes)
+        s = FBK(self.sc_id, self.time_range[0])
         s.load()
-        s.spectrum(ax=self.ex, 
+        _, p = s.spectrum(ax=self.ex, 
             pcolormesh_kwargs={'norm':matplotlib.colors.LogNorm(vmin=1E-4, vmax=0.1)})
+        plt.colorbar(p, cax=ex_c, label=f'$nT^{{{2}}}/Hz$')
         self.ex.set_xlabel('Time [HH:MM]')
         self.ex.set_ylabel('Frequency [Hz]') 
         self.ex.set_yscale('log')
