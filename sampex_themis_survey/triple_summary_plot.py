@@ -94,9 +94,15 @@ class Summary_Plot:
         self._plot_asi_images()
         self._plot_themis_footprint()
         self._plot_keogram()
-        self._plot_sst_e()
-        self._plot_sst_p()
-        self._plot_fbk()
+        try:
+            self._plot_sst_e()
+            self._plot_sst_p()
+            self._plot_fbk()
+        except FileNotFoundError as err:
+            if 'does not contain any hyper references containing' in str(err):
+                return
+            else:
+                raise
         # self.spec.tight_layout(self.fig)
         # plt.show()
         # plot_labels = (
