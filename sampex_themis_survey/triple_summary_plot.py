@@ -5,6 +5,7 @@ during  the 2008-03-04 triple conjunction.
 from datetime import datetime, date, timedelta
 from importlib.resources import path
 import string
+import dateutil.parser
 import pathlib
 
 import numpy as np
@@ -28,11 +29,12 @@ class Summary_Plot:
         self.time_window_sec = time_window_sec
         self.n_images = n_images
         self.map_alt = map_alt
-        self._load()
 
         self.save_dir = pathlib.Path(sampex_themis_survey.config['code_dir'], 'plots', 
             c_filename.split('.')[0])
         self.save_dir.mkdir(parents=True, exist_ok=True)
+
+        self._load()
         return
 
     def _load(self):
@@ -40,6 +42,13 @@ class Summary_Plot:
         self.c_df = pd.read_excel(self.c_path, skiprows=1)
         self.c_df['start'] = pd.to_datetime(self.c_df['Start Time (UTC)'])
         self.c_df['end'] = pd.to_datetime(self.c_df['End Time (UTC)'])
+
+        # Don't reanalyze conjunctions if last_summary_plot.txt exists.
+        self.last_plot_date_path = pathlib.Path(self.save_dir, 'last_summary_plot.txt')
+        if self.last_plot_date_path.exists():
+            with open(self.last_plot_date_path, 'r') as f:
+                last_plot_time = dateutil.parser.parse(f.read())
+            self.c_df = self.c_df[self.c_df['start'] > last_plot_time]
         return
 
     def loop(self):
@@ -64,8 +73,12 @@ class Summary_Plot:
                 row['start'] - timedelta(seconds=self.time_window_sec/2),
                 row['end'] + timedelta(seconds=self.time_window_sec/2)
             ]
-            # Make the plot here
+            
+
             self.plot()
+
+            with open(self.last_plot_date_path, 'w') as f:
+                f.write(row['start'].isoformat())
         
         return
 
