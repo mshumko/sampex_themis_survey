@@ -32,7 +32,7 @@ class Summary_Plot:
 
         self.save_dir = pathlib.Path(sampex_themis_survey.config['code_dir'], 'plots', 
             c_filename.split('.')[0])
-        self.save_dir.mkdir(exist_ok=True)
+        self.save_dir.mkdir(parents=True, exist_ok=True)
         return
 
     def _load(self):
@@ -102,11 +102,11 @@ class Summary_Plot:
         # plt.legend()
         plt.subplots_adjust(wspace=0.02, hspace=0.07, left=0.055, right=0.92, top=0.943)
         if save:
-            plt.show()
-        else:
             save_time = self.time_range[0].strftime("%Y%d%m_%H%M%S")
             filename = f'{save_time}_themis_probe_themis_asi_conjunction.png'
             plt.savefig(self.save_dir / filename, dpi=300)
+        else:
+            plt.show()
         return
 
     def _plot_asi_images(self):
