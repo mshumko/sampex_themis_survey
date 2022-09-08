@@ -29,6 +29,10 @@ class Summary_Plot:
         self.n_images = n_images
         self.map_alt = map_alt
         self._load()
+
+        self.save_dir = pathlib.Path(sampex_themis_survey.config['code_dir'], 'plots', 
+            c_filename.split('.')[0])
+        self.save_dir.mkdir(exist_ok=True)
         return
 
     def _load(self):
@@ -65,7 +69,7 @@ class Summary_Plot:
         
         return
 
-    def plot(self):
+    def plot(self, save=True):
         self.fig = plt.figure(figsize=(12, 9))
         self.spec = gridspec.GridSpec(
             nrows=5, 
@@ -97,7 +101,12 @@ class Summary_Plot:
 
         # plt.legend()
         plt.subplots_adjust(wspace=0.02, hspace=0.07, left=0.055, right=0.92, top=0.943)
-        plt.show()
+        if save:
+            plt.show()
+        else:
+            save_time = self.time_range[0].strftime("%Y%d%m_%H%M%S")
+            filename = f'{save_time}_themis_probe_themis_asi_conjunction.png'
+            plt.savefig(self.save_dir / filename, dpi=300)
         return
 
     def _plot_asi_images(self):
