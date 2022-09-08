@@ -65,7 +65,6 @@ class Summary_Plot:
         
         return
 
-
     def plot(self):
         self.fig = plt.figure(figsize=(12, 9))
         self.spec = gridspec.GridSpec(
@@ -75,20 +74,26 @@ class Summary_Plot:
         # -1 so that image_time[-1] == time_range[1]
         dt = (self.time_range[1]-self.time_range[0])/(self.n_images-1)
         self.image_times = [self.time_range[0] +  i*dt for i in range(self.n_images)]
-        self._plot_asi()
+        self._plot_asi_images()
+        self._plot_themis_footprint()
+        self._plot_keogram()
         plt.show()
         return
 
-    def _plot_asi(self):
+    def _plot_asi_images(self):
+        """
+        Plot a sequence of ASI images projected onto a geographic map in the first row
+        of the subplot grid.
+        """
         self.ax = self.n_images*[None]
         z = zip(self.image_times, string.ascii_uppercase[:self.n_images])
 
         skymap = asilib.load_skymap('THEMIS', self.asi_location, self.image_times[0])
-        lat_bounds = (
+        self.lat_bounds = (
             0.9*np.min(skymap['SITE_MAP_LATITUDE']),
             1.1*np.max(skymap['SITE_MAP_LATITUDE'])
             )
-        lon_bounds = (
+        self.lon_bounds = (
             0.9*np.min(skymap['SITE_MAP_LONGITUDE']),
             1.1*np.max(skymap['SITE_MAP_LONGITUDE'])
             )
@@ -97,78 +102,57 @@ class Summary_Plot:
             self.ax[i] = self.fig.add_subplot(self.spec[0, i])
             self.ax[i].get_xaxis().set_visible(False)
             self.ax[i].get_yaxis().set_visible(False)
-            asilib.make_map(lat_bounds=lat_bounds, lon_bounds=lon_bounds, ax=self.ax[i], land_color='grey')
+            asilib.make_map(lat_bounds=self.lat_bounds, lon_bounds=self.lon_bounds,
+                ax=self.ax[i], land_color='grey')
 
+            # Update image_times with the actual image timestamp.
             self.image_times[i], _, _, _, _ = asilib.plot_map(
                 'THEMIS', self.asi_location, image_time, self.map_alt, 
                 ax=self.ax[i], asi_label=False, color_bounds=None, pcolormesh_kwargs={'rasterized':True}
                 )
             
             self.ax[i].text(0, 0, f'({subplot_letter}) {image_time.strftime("%H:%M:%S")}', 
-                transform=self.ax[i].transAxes, va='bottom', color='white', fontsize=15)
+                transform=self.ax[i].transAxes, va='bottom', color='green', fontsize=15)
         return
+
+    def _plot_themis_footprint(self):
+        """
+        Plot the THEMIS probe footprint location in the first row of the subplot grid.
+        """
+        f = THEMIS_footprint(self.sc_id, self.time_range)
+        f.map(alt=self.map_alt, model='T89', mag_input={'Kp':1.667})
+        
+        for time, ax_i in zip(self.image_times, self.ax):
+            dt = np.abs([(time-ti).total_seconds() for ti in f.time])
+            idt = np.argmin(dt)
+            assert (time-f.time[idt]).total_seconds() <= 60, (
+                f'The time stamp difference, {(time-f.time[idt]).total_seconds()} '
+                f's, is too large.')
+            ax_i.scatter(f.footprint[idt, 1], f.footprint[idt, 0], 
+                label=f'THEMIS-{self.sc_id}',
+                color='r', s=100, marker='.')
+        return
+
+    def _plot_keogram(self):
+        """
+        Plots a keogram on the 2nd row of the subplot grid.
+        """
+        self.bx = self.fig.add_subplot(self.spec[1, :])
+        self.bx.tick_params(axis="x", labelbottom=False)
+        asilib.plot_keogram('THEMIS', self.asi_location, self.time_range, 
+            ax=self.bx, map_alt=self.map_alt, aacgm=True)
+        self.bx.set_xlim(self.time_range)
+        self.bx.set_title('')
+        self.bx.text(0, 1, f'({string.ascii_uppercase[self.n_images+1]}) THEMIS ASI keogram', 
+            transform=self.bx.transAxes, va='top', color='white', fontsize=15)
+        self.bx.set_ylabel('Magnetic lat [geg]')
+        # self.bx.set_ylim(self.lat_bounds)
+        return
+
 
 if __name__ == '__main__':
     s = Summary_Plot('sampex_themis_asi_themis_aurorax_conjunctions_500_km.xlsx')
     s.loop()
-
-
-    # def nearest_asi_images(self):
-        # ax = n*[None]
-# nearest_asi_image_times = []
-# z = zip(times, string.ascii_uppercase[:n])
-
-# for i, (image_time, subplot_letter) in enumerate(z):
-#     ax[i] = fig.add_subplot(spec[0, i])
-#     ax[i].get_xaxis().set_visible(False)
-#     ax[i].get_yaxis().set_visible(False)
-#     asilib.make_map(lat_bounds=lat_bounds, lon_bounds=lon_bounds, ax=ax[i], land_color='grey')
-#     for themis_asi_location in themis_asi_locations:
-#         t, _, _, _, _ = asilib.plot_map('THEMIS', themis_asi_location, image_time, alt, 
-#             ax=ax[i], asi_label=False, color_bounds=None, pcolormesh_kwargs={'rasterized':True})
-#         if themis_asi_location == themis_asi_locations[0]:
-#             nearest_asi_image_times.append(t)
-    
-#     ax[i].text(0, 0, f'({subplot_letter}) {image_time.strftime("%H:%M:%S")}', 
-#         transform=ax[i].transAxes, va='bottom', color='white', fontsize=15)
-
-# themis_asi_locations = ['FSMI']#, 'YKNF']
-# themis_probes = ['C'] #['D', 'E', 'C']  # Also try 'B', 'C'
-# alt = 110  # km
-# times = [
-#     datetime(2008, 3, 4, 5, 30, 0),
-#     datetime(2008, 3, 4, 5, 40, 0),
-#     datetime(2008, 3, 4, 5, 50, 0),
-#     datetime(2008, 3, 4, 6, 0, 0)
-#     ]
-# plot_range = (datetime(2008, 3, 4, 5, 0, 0), datetime(2008, 3, 4, 6, 30, 0))
-# lat_bounds=(55, 66)
-# lon_bounds=(-121, -101)
-
-# n = len(times)
-# fig = plt.figure(figsize=(12, 9))
-# spec = gripped.GridSpec(
-#     nrows=len(themis_asi_locations)+4, 
-#     ncols=n, figure=fig, height_ratios=(2, 1, 1, 1, 1)
-#     )
-
-# ax = n*[None]
-# nearest_asi_image_times = []
-# z = zip(times, string.ascii_uppercase[:n])
-
-# for i, (image_time, subplot_letter) in enumerate(z):
-#     ax[i] = fig.add_subplot(spec[0, i])
-#     ax[i].get_xaxis().set_visible(False)
-#     ax[i].get_yaxis().set_visible(False)
-#     asilib.make_map(lat_bounds=lat_bounds, lon_bounds=lon_bounds, ax=ax[i], land_color='grey')
-#     for themis_asi_location in themis_asi_locations:
-#         t, _, _, _, _ = asilib.plot_map('THEMIS', themis_asi_location, image_time, alt, 
-#             ax=ax[i], asi_label=False, color_bounds=None, pcolormesh_kwargs={'rasterized':True})
-#         if themis_asi_location == themis_asi_locations[0]:
-#             nearest_asi_image_times.append(t)
-    
-#     ax[i].text(0, 0, f'({subplot_letter}) {image_time.strftime("%H:%M:%S")}', 
-#         transform=ax[i].transAxes, va='bottom', color='white', fontsize=15)
 
 # themis_footprints = {}
 # colors = ['r', 'c', 'b', 'k']

@@ -13,15 +13,15 @@ import matplotlib.dates
 from matplotlib.ticker import FuncFormatter
 import sampex
 
-from sampex_survey import config
-from sampex_survey.footprint import SAMPEX_footprint 
+from sampex_themis_survey import config
+from sampex_themis_survey.footprint import SAMPEX_footprint 
 
 
 alt = 110  # km
 box = (10, 10)  # km
 x_labels = {'L':'L_Shell', 'MLT':'MLT', 'Geo Lat':'GEO_Lat', 'Geo Lon':'GEO_Long'}
 
-conjunction_dir = pathlib.Path(config['data_dir'], 'data')
+conjunction_dir = pathlib.Path(config['code_dir'], 'data')
 conjunction_path = conjunction_dir / f'sampex_themis_asi_themis_aurorax_conjunctions.xlsx'
 
 conjunction_list = pd.read_excel(conjunction_path, skiprows=1)
