@@ -76,7 +76,7 @@ class Summary_Plot:
         dt = (self.time_range[1]-self.time_range[0])/(self.n_images-1)
         self.image_times = [self.time_range[0] +  i*dt for i in range(self.n_images)]
         self._plot_asi()
-        # TODO: calculate times using time_range and self.n_images.
+        plt.show()
         return
 
     def _plot_asi(self):
@@ -86,11 +86,11 @@ class Summary_Plot:
         skymap = asilib.load_skymap('THEMIS', self.asi_location, self.image_times[0])
         lat_bounds = (
             0.9*np.min(skymap['SITE_MAP_LATITUDE']),
-            1.1*np.minmax(skymap['SITE_MAP_LATITUDE'])
+            1.1*np.max(skymap['SITE_MAP_LATITUDE'])
             )
         lon_bounds = (
             0.9*np.min(skymap['SITE_MAP_LONGITUDE']),
-            1.1*np.minmax(skymap['SITE_MAP_LONGITUDE'])
+            1.1*np.max(skymap['SITE_MAP_LONGITUDE'])
             )
 
         for i, (image_time, subplot_letter) in enumerate(z):
