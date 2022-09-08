@@ -105,16 +105,16 @@ class Summary_Plot:
                 raise
         # self.spec.tight_layout(self.fig)
         # plt.show()
-        # plot_labels = (
-        #     'THEMIS-SST electrons',
-        #     'THEMIS-SST ions',
-        #     'THEMIS-FBK'
-        # )
-        # themis_label_y = (0, 0, 0.8)
-
-        # for i, (cx_i, plot_label, y) in enumerate(zip(cx, plot_labels, themis_label_y), start=n+1):
-        #     cx_i.text(0, y, f'({string.ascii_uppercase[i]}) {plot_label}', 
-        #         transform=cx_i.transAxes, va='bottom', color='white', fontsize=15)
+        plot_labels = (
+            'THEMIS-SST electrons',
+            'THEMIS-SST ions',
+            'THEMIS-FBK'
+        )
+        subplots = [self.cx, self.dx, self.ex]
+        z = zip(subplots, plot_labels)
+        for i, (ax_i, plot_label) in enumerate(z, start=self.n_images+1):
+            ax_i.text(0, 0, f'({string.ascii_uppercase[i]}) {plot_label}', 
+                transform=ax_i.transAxes, va='bottom', color='white', fontsize=15)
 
         plt.suptitle(f'Example Triple Conjunction | THEMIS-THEMIS ASI-SAMPEX', fontsize=15)
 
