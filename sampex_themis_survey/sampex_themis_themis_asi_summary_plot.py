@@ -103,7 +103,7 @@ class Summary_Plot:
         plt.subplots_adjust(wspace=0.02, hspace=0.07, left=0.055, right=0.92, top=0.943)
         if save:
             save_time = self.time_range[0].strftime("%Y%d%m_%H%M%S")
-            filename = f'{save_time}_themis_probe_themis_asi_conjunction.png'
+            filename = f'{save_time}_themis_probe_{self.sc_id}_themis_asi_{self.asi_location}_conjunction.png'
             plt.savefig(self.save_dir / filename, dpi=300)
         else:
             plt.show()
