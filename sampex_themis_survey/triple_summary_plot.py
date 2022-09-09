@@ -92,7 +92,13 @@ class Summary_Plot:
         dt = (self.time_range[1]-self.time_range[0])/(self.n_images-1)
         self.image_times = [self.time_range[0] +  i*dt for i in range(self.n_images)]
         self._plot_asi_images()
-        self._plot_themis_footprint()
+        try:
+            self._plot_themis_footprint()
+        except AssertionError as err:
+            if 'The time stamp difference' in str(err):
+                return
+            else:
+                raise
         self._plot_keogram()
         try:
             self._plot_sst_e()
