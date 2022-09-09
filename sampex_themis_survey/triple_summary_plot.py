@@ -114,7 +114,7 @@ class Summary_Plot:
         z = zip(subplots, plot_labels)
         for i, (ax_i, plot_label) in enumerate(z, start=self.n_images+1):
             ax_i.text(0, 0, f'({string.ascii_uppercase[i]}) {plot_label}', 
-                transform=ax_i.transAxes, va='bottom', color='white', fontsize=15)
+                transform=ax_i.transAxes, va='bottom', color='k', fontsize=15)
 
         plt.suptitle(f'Example Triple Conjunction | THEMIS-THEMIS ASI-SAMPEX', fontsize=15)
 
@@ -138,12 +138,12 @@ class Summary_Plot:
 
         skymap = asilib.load_skymap('THEMIS', self.asi_location, self.image_times[0])
         self.lat_bounds = (
-            0.9*np.min(skymap['SITE_MAP_LATITUDE']),
-            1.1*np.max(skymap['SITE_MAP_LATITUDE'])
+            skymap['SITE_MAP_LATITUDE']-6,
+            skymap['SITE_MAP_LATITUDE']+6
             )
         self.lon_bounds = (
-            0.9*np.min(skymap['SITE_MAP_LONGITUDE']),
-            1.1*np.max(skymap['SITE_MAP_LONGITUDE'])
+            skymap['SITE_MAP_LONGITUDE']-12,
+            skymap['SITE_MAP_LONGITUDE']+12
             )
 
         for i, (image_time, subplot_letter) in enumerate(z):
@@ -153,14 +153,21 @@ class Summary_Plot:
             asilib.make_map(lat_bounds=self.lat_bounds, lon_bounds=self.lon_bounds,
                 ax=self.ax[i], land_color='grey')
 
-            # Update image_times with the actual image timestamp.
-            self.image_times[i], _, _, _, _ = asilib.plot_map(
-                'THEMIS', self.asi_location, image_time, self.map_alt, 
-                ax=self.ax[i], asi_label=False, color_bounds=None, pcolormesh_kwargs={'rasterized':True}
-                )
+            try:
+                # Update image_times with the actual image timestamp.
+                self.image_times[i], _, _, _, _ = asilib.plot_map(
+                    'THEMIS', self.asi_location, image_time, self.map_alt, 
+                    ax=self.ax[i], asi_label=False, color_bounds=None, pcolormesh_kwargs={'rasterized':True},
+                    time_thresh_s=3
+                    )
+            except AssertionError as err:
+                if '0 number of time stamps were found within' in str(err):
+                    continue
+                else:
+                    raise
             
             self.ax[i].text(0, 0, f'({subplot_letter}) {image_time.strftime("%H:%M:%S")}', 
-                transform=self.ax[i].transAxes, va='bottom', color='green', fontsize=15)
+                transform=self.ax[i].transAxes, va='bottom', color='k', fontsize=15)
         return
 
     def _plot_themis_footprint(self):
@@ -178,7 +185,7 @@ class Summary_Plot:
                 f's, is too large.')
             ax_i.scatter(f.footprint[idt, 1], f.footprint[idt, 0], 
                 label=f'THEMIS-{self.sc_id}',
-                color='r', s=100, marker='.')
+                color='r', s=100, marker='x')
         return
 
     def _plot_keogram(self):
@@ -187,8 +194,15 @@ class Summary_Plot:
         """
         self.bx = self.fig.add_subplot(self.spec[1, :])
         self.bx.tick_params(axis="x", labelbottom=False)
-        asilib.plot_keogram('THEMIS', self.asi_location, self.time_range, 
-            ax=self.bx, map_alt=self.map_alt, aacgm=True)
+        try:
+            asilib.plot_keogram('THEMIS', self.asi_location, self.time_range, 
+                ax=self.bx, map_alt=self.map_alt, aacgm=True)
+        except ValueError as err:
+            if 'time stamps are out of order' in str(err):
+                print(err)
+                return
+            else:
+                raise
         self.bx.set_xlim(self.time_range)
         self.bx.set_title('')
         self.bx.text(0, 1, f'({string.ascii_uppercase[self.n_images+1]}) THEMIS ASI keogram', 
@@ -242,7 +256,13 @@ class Summary_Plot:
         # self.ex.tick_params(axis="x", labelbottom=False) 
         ex_c = self.ex.inset_axes([1.01, 0, 0.02, 1], transform=self.ex.transAxes)
         s = FBK(self.sc_id, self.time_range[0])
-        s.load()
+        try:
+            s.load()
+        except ValueError as err:
+            if 'No records found for variable' in str(err):
+                return
+            else:
+                raise
         _, p = s.spectrum(ax=self.ex, 
             pcolormesh_kwargs={'norm':matplotlib.colors.LogNorm(vmin=1E-4, vmax=0.1)})
         plt.colorbar(p, cax=ex_c, label=f'$nT^{{{2}}}/Hz$')
