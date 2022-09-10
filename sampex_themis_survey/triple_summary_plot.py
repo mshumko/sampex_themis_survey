@@ -86,6 +86,7 @@ class Themmis_Themis_ASI:
         return
 
     def plot(self, save=True):
+        # TODO: Create the subplots here and pass each subplot to the relevant method.
         self.fig = plt.figure(figsize=(12, 9))
         self.spec = gridspec.GridSpec(
             nrows=5, 
