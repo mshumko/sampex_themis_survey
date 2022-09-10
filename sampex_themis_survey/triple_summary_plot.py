@@ -23,7 +23,10 @@ from sampex_themis_survey.themis.sst import SST
 from sampex_themis_survey.themis.fbk import FBK
 
 
-class Summary_Plot:
+class Themmis_Themis_ASI:
+    """
+    Make summary plots of conjunctions between the THEMIS probes and THEMIS ASIs.
+    """
     def __init__(self, c_filename, time_window_sec=3600/2, n_images=3, map_alt=110) -> None:
         self.c_filename = c_filename
         self.time_window_sec = time_window_sec
@@ -56,29 +59,29 @@ class Summary_Plot:
         Loop over every conjunction and load the data.
         """
         current_date = date.min
-        for _, row in self.c_df.iterrows():
-            print(f'Processing {row["start"]}')
-            if current_date != row['start'].date:
+        for _, self.row in self.c_df.iterrows():
+            print(f'Processing {self.row["start"]}')
+            if current_date != self.row['start'].date:
                 try:
-                    self.hilt = sampex.HILT(row['start']).load()
+                    self.hilt = sampex.HILT(self.row['start']).load()
                 except FileNotFoundError as err:
                     if 'does not contain any hyper references' in str(err):
                         continue
                     raise
-                current_date = row['start'].date
+                current_date = self.row['start'].date
 
-            self.asi_location = row['Conjunction Between'].split('and')[0].rstrip().split(' ')[1]
-            self.sc_id = row['Conjunction Between'].split('and')[1].rstrip().split('-')[1]
+            self.asi_location = self.row['Conjunction Between'].split('and')[0].rstrip().split(' ')[1]
+            self.sc_id = self.row['Conjunction Between'].split('and')[1].rstrip().split('-')[1]
             self.time_range = [
-                row['start'] - timedelta(seconds=self.time_window_sec/2),
-                row['end'] + timedelta(seconds=self.time_window_sec/2)
+                self.row['start'] - timedelta(seconds=self.time_window_sec/2),
+                self.row['end'] + timedelta(seconds=self.time_window_sec/2)
             ]
             
 
             self.plot()
 
             with open(self.last_plot_date_path, 'w') as f:
-                f.write(row['start'].isoformat())
+                f.write(self.row['start'].isoformat())
         
         return
 
@@ -281,6 +284,44 @@ class Summary_Plot:
         return
 
 
+class Sampex_Themis_ASI(Themmis_Themis_ASI):
+    def __init__(self, c_filename, time_window_sec=3600/2, n_images=3, map_alt=110) -> None:
+        super().__init__(c_filename, time_window_sec=time_window_sec, n_images=n_images, map_alt=map_alt)
+        return
+
+    def loop(self):
+        """
+        Loop over every conjunction and load the data.
+        """
+        current_date = date.min
+        for _, self.row in self.c_df.iterrows():
+            print(f'Processing {self.row["start"]}')
+            if current_date != self.row['start'].date:
+                try:
+                    self.hilt = sampex.HILT(self.row['start']).load()
+                except FileNotFoundError as err:
+                    if 'does not contain any hyper references' in str(err):
+                        continue
+                    raise
+                current_date = self.row['start'].date
+
+            self.asi_location = self.row['Conjunction Between'].split('and')[0].rstrip().split(' ')[1]
+            self.sc_id = self.row['Conjunction Between'].split('and')[1].rstrip().split('-')[1]
+            self.time_range = [
+                self.row['start'] - timedelta(seconds=self.time_window_sec/2),
+                self.row['end'] + timedelta(seconds=self.time_window_sec/2)
+            ]
+            
+
+            self.plot()
+
+            with open(self.last_plot_date_path, 'w') as f:
+                f.write(self.row['start'].isoformat())
+        
+        return
+
+
 if __name__ == '__main__':
-    s = Summary_Plot('sampex_themis_asi_themis_aurorax_conjunctions_500_km.xlsx')
+    filename = 'sampex_themis_asi_themis_aurorax_conjunctions_500_km.xlsx'
+    s = Themmis_Themis_ASI(filename)
     s.loop()
