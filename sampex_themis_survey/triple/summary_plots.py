@@ -61,6 +61,7 @@ class Themis_Themis_ASI:
         """
         Loop over every conjunction and load the data.
         """
+        self._create_empty_subplots()
         current_date = date.min
         for _, self.row in self.c_df.iterrows():
             print(f'Processing {self.row["start"]}')
@@ -92,7 +93,10 @@ class Themis_Themis_ASI:
         """
         Creates the subplot layout and dispatches the plotting to the other methods.
         """
-        self._create_empty_subplots()
+        for ax_i in self.ax:
+            ax_i.clear()
+        for ax_i in [self.bx, self.cx, self.dx, self.ex]:
+            ax_i.clear()
 
         # -1 so that image_time[-1] == time_range[1]
         dt = (self.time_range[1]-self.time_range[0])/(self.n_images-1)
@@ -561,7 +565,7 @@ class Sampex_Themis_ASI(Themis_Themis_ASI):
 
 if __name__ == '__main__':
     filename = 'sampex_themis_asi_themis_aurorax_conjunctions_500_km.xlsx'
-    # s = Themis_Themis_ASI(filename)
-    # s.loop()
-    s = Sampex_Themis_ASI(filename)
+    s = Themis_Themis_ASI(filename)
     s.loop()
+    # s = Sampex_Themis_ASI(filename)
+    # s.loop()
