@@ -152,7 +152,7 @@ class Themis_Themis_ASI:
         plt.subplots_adjust(wspace=0.02, hspace=0.07, left=0.055, right=0.92, top=0.943)
         if save:
             save_time = self.row['start'].strftime("%Y%m%d_%H%M%S")
-            filename = f'{save_time}_sampex_themis_asi_{self.asi_location}_conjunction.png'
+            filename = f'{save_time}_themis_probe_{self.sc_id}_themis_asi_{self.asi_location}_conjunction.png'
             plt.savefig(self.save_dir / filename, dpi=300)
         else:
             plt.show()
@@ -401,7 +401,7 @@ class Sampex_Themis_ASI(Themis_Themis_ASI):
         plt.subplots_adjust(hspace=0.10, wspace=0.01, top=0.93, bottom=0.2, left=0.09, right=0.95)
         if save:
             save_time = self.row['start'].strftime("%Y%m%d_%H%M%S")
-            filename = f'{save_time}_themis_probe_{self.sc_id}_themis_asi_{self.asi_location}_conjunction.png'
+            filename = f'{save_time}_sampex_themis_asi_{self.asi_location}_conjunction.png'
             plt.savefig(self.save_dir / filename, dpi=300)
         else:
             plt.show()
