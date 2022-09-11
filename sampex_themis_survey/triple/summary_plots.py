@@ -7,6 +7,7 @@ from importlib.resources import path
 import string
 import dateutil.parser
 import pathlib
+import logging
 
 import numpy as np
 import pandas as pd
@@ -326,6 +327,8 @@ class Sampex_Themis_ASI(Themis_Themis_ASI):
             c_filename, time_window_sec=time_window_sec, n_images=n_images, map_alt=map_alt
             )
         self.x_labels = {'L':'L_Shell', 'MLT':'MLT', 'Geo Lat':'GEO_Lat', 'Geo Lon':'GEO_Long'}
+        logging.basicConfig(filename='sampex_themis_asi_summary_plot.log', 
+            encoding='utf-8', level=logging.INFO, format='%(asctime)s %(message)s')
         return
 
     def loop(self):
@@ -370,12 +373,13 @@ class Sampex_Themis_ASI(Themis_Themis_ASI):
         self._plot_asi_images(self.ax)
         self._plot_sampex_footprint(self.ax)
 
-        # The try-except blocks in case one of the instruments did not have data
-        # on that day.
         try:
             self._plot_hilt(self.bx)
-        except FileNotFoundError as err:
-            if 'does not contain any hyper references containing' in str(err):
+        except (FileNotFoundError, KeyError) as err:
+            if 'does not contain any hyper references containing' in str(err):  # No file
+                return
+            elif isinstance(err, KeyError):  # No HILT data throughout self.time_range.
+                logging.info(f'SAMPEX-HILT did not have continuos data for {self.time_range}')
                 return
             else:
                 raise
