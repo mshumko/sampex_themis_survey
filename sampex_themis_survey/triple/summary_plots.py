@@ -321,7 +321,7 @@ class Themis_Themis_ASI:
 
 
 class Sampex_Themis_ASI(Themis_Themis_ASI):
-    def __init__(self, c_filename, time_window_sec=120, n_images=3, map_alt=110) -> None:
+    def __init__(self, c_filename, time_window_sec=60, n_images=3, map_alt=110) -> None:
         super().__init__(
             c_filename, time_window_sec=time_window_sec, n_images=n_images, map_alt=map_alt
             )
@@ -387,8 +387,6 @@ class Sampex_Themis_ASI(Themis_Themis_ASI):
         #     else:
         #         raise
 
-        self.cx.set_xlabel('Time [HH:MM]')
-
         # Annotate and clean up the plot.
         # plot_labels = (
         #     'THEMIS-SST electrons',
@@ -427,6 +425,7 @@ class Sampex_Themis_ASI(Themis_Themis_ASI):
             self.ax[i].get_yaxis().set_visible(False)
         # HILT
         self.bx = self.fig.add_subplot(self.spec[1, :])
+        self.bx.tick_params(axis="x", labelbottom=False)
         # PET
         self.cx = self.fig.add_subplot(self.spec[2, :], sharex=self.bx)
 
@@ -484,13 +483,14 @@ class Sampex_Themis_ASI(Themis_Themis_ASI):
                 self.footprint.loc[t, 'GEO_Lat'],
                 c='red', s=150, marker='.',
                 )
-            return
+        return
 
     def _plot_hilt(self, _ax):
         filtered_hilt = self.hilt.loc[self.time_range[0]:self.time_range[1], :]
         _ax.plot(filtered_hilt.index, filtered_hilt['counts'], c='r')
         _ax.xaxis.set_minor_locator(matplotlib.dates.SecondLocator())
         _ax.set_xlim(*self.time_range)
+        _ax.set_yscale('log')
 
         _ax.set_ylabel(f'>1 MeV electrons\n[counts/20 ms]')
         return
