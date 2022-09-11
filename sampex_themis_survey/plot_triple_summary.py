@@ -23,7 +23,7 @@ from sampex_themis_survey.themis.sst import SST
 from sampex_themis_survey.themis.fbk import FBK
 
 
-class Themmis_Themis_ASI:
+class Themis_Themis_ASI:
     """
     Make summary plots of conjunctions between the THEMIS probes and THEMIS ASIs.
     """
@@ -131,7 +131,7 @@ class Themmis_Themis_ASI:
         # plt.legend()
         plt.subplots_adjust(wspace=0.02, hspace=0.07, left=0.055, right=0.92, top=0.943)
         if save:
-            save_time = self.time_range[0].strftime("%Y%m%d_%H%M%S")
+            save_time = self.row['start'].strftime("%Y%m%d_%H%M%S")
             filename = f'{save_time}_themis_probe_{self.sc_id}_themis_asi_{self.asi_location}_conjunction.png'
             plt.savefig(self.save_dir / filename, dpi=300)
         else:
@@ -324,5 +324,5 @@ class Sampex_Themis_ASI(Themmis_Themis_ASI):
 
 if __name__ == '__main__':
     filename = 'sampex_themis_asi_themis_aurorax_conjunctions_500_km.xlsx'
-    s = Themmis_Themis_ASI(filename)
+    s = Themis_Themis_ASI(filename)
     s.loop()
