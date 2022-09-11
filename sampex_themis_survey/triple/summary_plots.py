@@ -14,11 +14,13 @@ import asilib
 import sampex
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
+from matplotlib.ticker import FuncFormatter
 import matplotlib.colors
 import matplotlib.dates
 
 import sampex_themis_survey
 from sampex_themis_survey.themis.footprint import THEMIS_footprint
+from sampex_themis_survey.footprint import SAMPEX_footprint
 from sampex_themis_survey.themis.sst import SST
 from sampex_themis_survey.themis.fbk import FBK
 
@@ -150,7 +152,7 @@ class Themis_Themis_ASI:
         plt.subplots_adjust(wspace=0.02, hspace=0.07, left=0.055, right=0.92, top=0.943)
         if save:
             save_time = self.row['start'].strftime("%Y%m%d_%H%M%S")
-            filename = f'{save_time}_themis_probe_{self.sc_id}_themis_asi_{self.asi_location}_conjunction.png'
+            filename = f'{save_time}_sampex_themis_asi_{self.asi_location}_conjunction.png'
             plt.savefig(self.save_dir / filename, dpi=300)
         else:
             plt.show()
@@ -319,8 +321,11 @@ class Themis_Themis_ASI:
 
 
 class Sampex_Themis_ASI(Themis_Themis_ASI):
-    def __init__(self, c_filename, time_window_sec=3600/2, n_images=3, map_alt=110) -> None:
-        super().__init__(c_filename, time_window_sec=time_window_sec, n_images=n_images, map_alt=map_alt)
+    def __init__(self, c_filename, time_window_sec=120, n_images=3, map_alt=110) -> None:
+        super().__init__(
+            c_filename, time_window_sec=time_window_sec, n_images=n_images, map_alt=map_alt
+            )
+        self.x_labels = {'L':'L_Shell', 'MLT':'MLT', 'Geo Lat':'GEO_Lat', 'Geo Lon':'GEO_Long'}
         return
 
     def loop(self):
@@ -329,23 +334,22 @@ class Sampex_Themis_ASI(Themis_Themis_ASI):
         """
         current_date = date.min
         for _, self.row in self.c_df.iterrows():
-            print(f'Processing {self.row["start"]}')
-            if current_date != self.row['start'].date:
-                try:
-                    self.hilt = sampex.HILT(self.row['start']).load()
-                except FileNotFoundError as err:
-                    if 'does not contain any hyper references' in str(err):
-                        continue
-                    raise
-                current_date = self.row['start'].date
-
             self.asi_location = self.row['Conjunction Between'].split('and')[0].rstrip().split(' ')[1]
             self.sc_id = self.row['Conjunction Between'].split('and')[1].rstrip().split('-')[1]
             self.time_range = [
                 self.row['start'] - timedelta(seconds=self.time_window_sec/2),
                 self.row['end'] + timedelta(seconds=self.time_window_sec/2)
             ]
-            
+            print(f'Processing {self.row["start"]} conjunction between SAMPEX and THEMIS-{self.asi_location}.')
+
+            if current_date != self.row['start'].date:
+                try:
+                    self._load_sampex()
+                except FileNotFoundError as err:
+                    if 'does not contain any hyper references' in str(err):
+                        continue
+                    raise
+                current_date = self.row['start'].date
 
             self.plot()
 
@@ -354,8 +358,187 @@ class Sampex_Themis_ASI(Themis_Themis_ASI):
         
         return
 
+    def plot(self, save=True):
+        """
+        Creates the subplot layout and dispatches the plotting to the other methods.
+        """
+        self._create_empty_subplots()
+
+        # -1 so that image_time[-1] == time_range[1]
+        dt = (self.time_range[1]-self.time_range[0])/(self.n_images-1)
+        self.image_times = [self.time_range[0] +  i*dt for i in range(self.n_images)]
+        self._plot_asi_images(self.ax)
+        self._plot_sampex_footprint(self.ax)
+
+        # The try-except blocks in case one of the instruments did not have data
+        # on that day.
+        try:
+            self._plot_hilt(self.bx)
+        except FileNotFoundError as err:
+            if 'does not contain any hyper references containing' in str(err):
+                return
+            else:
+                raise
+        # try:
+        #     self._plot_pet(self.cx)
+        # except FileNotFoundError as err:
+        #     if 'does not contain any hyper references containing' in str(err):
+        #         return
+        #     else:
+        #         raise
+
+        self.cx.set_xlabel('Time [HH:MM]')
+
+        # Annotate and clean up the plot.
+        # plot_labels = (
+        #     'THEMIS-SST electrons',
+        #     'THEMIS-SST ions',
+        #     'THEMIS-FBK'
+        # )
+        # subplots = [self.cx, self.dx, self.ex]
+        # z = zip(subplots, plot_labels)
+        # for i, (ax_i, plot_label) in enumerate(z, start=self.n_images+1):
+        #     ax_i.text(0, 0, f'({string.ascii_uppercase[i]}) {plot_label}', 
+        #         transform=ax_i.transAxes, va='bottom', color='k', fontsize=15)
+
+        plt.suptitle(f'Example Triple Conjunction | THEMIS-THEMIS ASI-SAMPEX', fontsize=15)
+        plt.subplots_adjust(hspace=0.10, wspace=0.01, top=0.93, bottom=0.2, left=0.09, right=0.95)
+        if save:
+            save_time = self.row['start'].strftime("%Y%m%d_%H%M%S")
+            filename = f'{save_time}_themis_probe_{self.sc_id}_themis_asi_{self.asi_location}_conjunction.png'
+            plt.savefig(self.save_dir / filename, dpi=300)
+        else:
+            plt.show()
+        return
+
+    def _create_empty_subplots(self):
+        """
+        Create the empty subplot layout and make the subplots
+        as class attributes. 
+        """
+        self.fig = plt.figure(figsize=(10, 7))
+        self.spec = gridspec.GridSpec(nrows=3, ncols=self.n_images, figure=self.fig, height_ratios=(2, 1, 1))
+
+        # ASI map subplots
+        self.ax = self.n_images*[None]
+        for i in range(self.n_images):
+            self.ax[i] = self.fig.add_subplot(self.spec[0, i])
+            self.ax[i].get_xaxis().set_visible(False)
+            self.ax[i].get_yaxis().set_visible(False)
+        # HILT
+        self.bx = self.fig.add_subplot(self.spec[1, :])
+        # PET
+        self.cx = self.fig.add_subplot(self.spec[2, :], sharex=self.bx)
+
+        self.cx.xaxis.set_major_formatter(FuncFormatter(self.format_xaxis))
+        self.cx.xaxis.set_major_locator(matplotlib.dates.SecondLocator(interval=10))
+
+        self.cx.set_xlabel('\n'.join(['Time'] + list(self.x_labels.keys())))
+        self.cx.xaxis.set_label_coords(-0.07, -0.09)
+        return
+
+
+    def _plot_asi_images(self, _ax):
+        """
+        Plot a sequence of ASI images projected onto a geographic map in the first row
+        of the subplot grid.
+        """
+        z = zip(_ax, self.image_times, string.ascii_uppercase[:self.n_images])
+
+        skymap = asilib.load_skymap('THEMIS', self.asi_location, self.image_times[0])
+        self.lat_bounds = (
+            skymap['SITE_MAP_LATITUDE']-6,
+            skymap['SITE_MAP_LATITUDE']+6
+            )
+        self.lon_bounds = (
+            skymap['SITE_MAP_LONGITUDE']-12,
+            skymap['SITE_MAP_LONGITUDE']+12
+            )
+
+        for i, (ax_i, image_time, subplot_letter) in enumerate(z):
+            asilib.make_map(lat_bounds=self.lat_bounds, lon_bounds=self.lon_bounds,
+                ax=ax_i, land_color='grey')
+
+            try:
+                # Update image_times with the actual image timestamp.
+                self.image_times[i], _, _, _, _ = asilib.plot_map(
+                    'THEMIS', self.asi_location, image_time, self.map_alt, 
+                    ax=ax_i, asi_label=False, color_bounds=None, pcolormesh_kwargs={'rasterized':True},
+                    time_thresh_s=3
+                    )
+            except AssertionError as err:
+                if '0 number of time stamps were found within' in str(err):
+                    continue
+                else:
+                    raise
+            
+            ax_i.text(0, 0, f'({subplot_letter}) {image_time.strftime("%H:%M:%S")}', 
+                transform=ax_i.transAxes, va='bottom', color='k', fontsize=15)
+        return
+
+    def _plot_sampex_footprint(self, _ax):
+        for ax_i, t in zip(_ax, self.image_times):
+            ax_i.plot(self.footprint.loc[:, 'GEO_Long'], self.footprint.loc[:, 'GEO_Lat'], 'r:')
+            ax_i.scatter(
+                self.footprint.loc[t, 'GEO_Long'], 
+                self.footprint.loc[t, 'GEO_Lat'],
+                c='red', s=150, marker='.',
+                )
+            return
+
+    def _plot_hilt(self, _ax):
+        filtered_hilt = self.hilt.loc[self.time_range[0]:self.time_range[1], :]
+        _ax.plot(filtered_hilt.index, filtered_hilt['counts'], c='r')
+        _ax.xaxis.set_minor_locator(matplotlib.dates.SecondLocator())
+        _ax.set_xlim(*self.time_range)
+
+        _ax.set_ylabel(f'>1 MeV electrons\n[counts/20 ms]')
+        return
+    
+    def _load_sampex(self):
+        self.hilt = sampex.HILT(self.row['start']).load()
+
+        footprint = SAMPEX_footprint(self.time_range[0]).map(alt=self.map_alt)
+
+        asi_times, _ = asilib.load_image('THEMIS', self.asi_location, 
+            time_range=(self.time_range[0]-pd.Timedelta(seconds=3), self.time_range[1])
+        )
+        asi_times_df = pd.DataFrame(index=asi_times)
+
+        # The merge will double the time cadence to 3 seconds and the new times will have
+        # an associated NaNs. df.interpolate will interpolate over the NaN values.
+        footprint = pd.merge_asof(
+            asi_times_df, footprint, 
+            left_index=True, right_index=True, 
+            tolerance=pd.Timedelta(seconds=1), 
+            direction='nearest'
+            )
+        self.footprint = footprint.interpolate(method='time', limit_area='inside').dropna()
+        return
+
+    def format_xaxis(self, tick_val, _):
+        """
+        The tick magic happens here. pyplot gives it a tick time, and this function 
+        returns the closest label to that time. Read docs for FuncFormatter().
+        """
+        # Find the nearest time within 6 seconds (the cadence of the SAMPEX attitude files)
+        tick_time = matplotlib.dates.num2date(tick_val).replace(tzinfo=None)
+        i_min_time = np.argmin(np.abs(self.footprint.index - tick_time))
+        if np.abs(self.footprint.index[i_min_time] - tick_time).total_seconds() > 6:
+            # return ''
+            raise ValueError(f'Nearest timestamp to tick_time is more than 6 seconds away')
+        pd_index = self.footprint.index[i_min_time]
+        # Cast np.array as strings so that it can insert the time string. 
+        values = self.footprint.loc[pd_index, self.x_labels.values()].to_numpy().round(2).astype(str)
+        values = np.insert(values, 0, tick_time.strftime('%H:%M:%S'))
+        label = '\n'.join(values)
+        return label
+
+
 
 if __name__ == '__main__':
     filename = 'sampex_themis_asi_themis_aurorax_conjunctions_500_km.xlsx'
-    s = Themis_Themis_ASI(filename)
+    # s = Themis_Themis_ASI(filename)
+    # s.loop()
+    s = Sampex_Themis_ASI(filename)
     s.loop()
