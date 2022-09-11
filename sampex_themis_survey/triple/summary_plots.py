@@ -322,7 +322,7 @@ class Themis_Themis_ASI:
 
 
 class Sampex_Themis_ASI(Themis_Themis_ASI):
-    def __init__(self, c_filename, time_window_sec=60, n_images=3, map_alt=110) -> None:
+    def __init__(self, c_filename, time_window_sec=120, n_images=3, map_alt=110) -> None:
         super().__init__(
             c_filename, time_window_sec=time_window_sec, n_images=n_images, map_alt=map_alt
             )
@@ -339,9 +339,10 @@ class Sampex_Themis_ASI(Themis_Themis_ASI):
         for _, self.row in self.c_df.iterrows():
             self.asi_location = self.row['Conjunction Between'].split('and')[0].rstrip().split(' ')[1]
             self.sc_id = self.row['Conjunction Between'].split('and')[1].rstrip().split('-')[1]
+            t0 = self.row['start'] + (self.row['end'] - self.row['start'])/2
             self.time_range = [
-                self.row['start'] - timedelta(seconds=self.time_window_sec/2),
-                self.row['end'] + timedelta(seconds=self.time_window_sec/2)
+                t0 - timedelta(seconds=self.time_window_sec/2),
+                t0 + timedelta(seconds=self.time_window_sec/2)
             ]
             print(f'Processing {self.row["start"]} conjunction between SAMPEX and THEMIS-{self.asi_location}.')
 
@@ -397,7 +398,7 @@ class Sampex_Themis_ASI(Themis_Themis_ASI):
         )
         subplots = [self.bx]
         z = zip(subplots, plot_labels)
-        for i, (ax_i, plot_label) in enumerate(z, start=self.n_images+1):
+        for i, (ax_i, plot_label) in enumerate(z, start=self.n_images):
             ax_i.text(0, 0.99, f'({string.ascii_uppercase[i]}) {plot_label}', 
                 transform=ax_i.transAxes, va='top', color='k', fontsize=15)
 
