@@ -1,6 +1,5 @@
 # Introduction
-This is the package containing the sampex_themis_survey code.
-
+Analyze the double conjunctions between the SAMPEX satellite and the THEMIS all-sky imager (ASI) array, and also triple conjunctions between SAMPEX,THEMIS ASIs, and THEMIS satellites.
 
 # Dependencies
 Before you can run many of these scripts, you will need to install [IRBEM](https://github.com/PRBEM/IRBEM). See their installation instructions for more information.
@@ -20,6 +19,5 @@ Before you can run many of these scripts, you will need to install [IRBEM](https
     ```
 
 # Configuration
-A lot of data science projects load data external to the source code (a good practice) so `project/__main__.py` creates a `project/config.ini` file that is loaded on import by `project/__init__.py`. 
-
-To execute `project/__main__.py`, first install `project` with the steps above and then run `python3 -m project config` and answer the prompt. You will now see a `project/config.ini` with two paths: one to this project and the other to the specified data directory. One loaded by `project/__init__.py`, this dictionary is accessed via `import project.config`.
+- If you already saved the sampex HILT and attitude files on your computer, and in a unique location, run `python3 -m sampex init` and paste the data directory there.
+- Similarly, if you already have some of the THEMIS ASI data on your computer in a unique location, run `python3 -m asilib init` and paste the data directory there.
