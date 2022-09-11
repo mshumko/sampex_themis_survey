@@ -481,7 +481,7 @@ class Sampex_Themis_ASI(Themis_Themis_ASI):
 
             nearest_time_i = np.argmin(np.abs(self.footprint.index - t))
             nearest_time = self.footprint.index[nearest_time_i]
-            if np.abs(nearest_time - t).total_seconds() > 6:
+            if np.abs(nearest_time - t).total_seconds() > 7:
                 # return ''
                 raise ValueError(f'Nearest timestamp to tick_time is more than 6 seconds away')
             ax_i.scatter(
@@ -504,8 +504,10 @@ class Sampex_Themis_ASI(Themis_Themis_ASI):
     def _load_sampex(self):
         self.hilt = sampex.HILT(self.row['start']).load()
 
+        # At a 6-second cadence
         footprint = SAMPEX_footprint(self.time_range[0]).map(alt=self.map_alt)
 
+        # At a 3-second cadence.
         asi_times, _ = asilib.load_image('THEMIS', self.asi_location, 
             time_range=(self.time_range[0]-pd.Timedelta(seconds=3), self.time_range[1])
         )
@@ -516,7 +518,7 @@ class Sampex_Themis_ASI(Themis_Themis_ASI):
         footprint = pd.merge_asof(
             asi_times_df, footprint, 
             left_index=True, right_index=True, 
-            tolerance=pd.Timedelta(seconds=1), 
+            tolerance=pd.Timedelta(seconds=3),  # Maximum expected time difference.
             direction='nearest'
             )
         self.footprint = footprint.interpolate(method='time', limit_area='inside').dropna()
