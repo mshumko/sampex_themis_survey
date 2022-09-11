@@ -141,15 +141,17 @@ class Themis_Themis_ASI:
 
         # Annotate and clean up the plot.
         plot_labels = (
+            'THEMIS-ASI keogram',
             'THEMIS-SST electrons',
             'THEMIS-SST ions',
             'THEMIS-FBK'
         )
-        subplots = [self.cx, self.dx, self.ex]
-        z = zip(subplots, plot_labels)
-        for i, (ax_i, plot_label) in enumerate(z, start=self.n_images+1):
+        subplots = [self.bx, self.cx, self.dx, self.ex]
+        label_colors = ['w', 'k', 'k', 'k']
+        z = zip(subplots, plot_labels, label_colors)
+        for i, (ax_i, plot_label, label_color) in enumerate(z, start=self.n_images):
             ax_i.text(0, 0, f'({string.ascii_uppercase[i]}) {plot_label}', 
-                transform=ax_i.transAxes, va='bottom', color='k', fontsize=15)
+                transform=ax_i.transAxes, va='bottom', color=label_color, fontsize=15)
 
         plt.suptitle(f'Example Triple Conjunction | THEMIS Probe-THEMIS ASI', fontsize=15)
 
@@ -265,8 +267,6 @@ class Themis_Themis_ASI:
                 raise
         _ax.set_xlim(self.time_range)
         _ax.set_title('')
-        _ax.text(0, 1, f'({string.ascii_uppercase[self.n_images+1]}) THEMIS ASI keogram', 
-            transform=_ax.transAxes, va='top', color='white', fontsize=15)
         _ax.set_ylabel('Magnetic lat [deg]')
         # self.bx.set_ylim(self.lat_bounds)
         return
