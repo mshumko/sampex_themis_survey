@@ -446,7 +446,7 @@ class Sampex_Themis_ASI(Themis_Themis_ASI):
             self.ax[i].get_yaxis().set_visible(False)
         # HILT
         self.bx = self.fig.add_subplot(self.spec[1, :])
-        self.bx.tick_params(axis="x", labelbottom=False)
+        # self.bx.tick_params(axis="x", labelbottom=False)
         # # PET
         # self.cx = self.fig.add_subplot(self.spec[2, :], sharex=self.bx)
 
