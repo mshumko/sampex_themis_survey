@@ -388,16 +388,14 @@ class Sampex_Themis_ASI(Themis_Themis_ASI):
         #         raise
 
         # Annotate and clean up the plot.
-        # plot_labels = (
-        #     'THEMIS-SST electrons',
-        #     'THEMIS-SST ions',
-        #     'THEMIS-FBK'
-        # )
-        # subplots = [self.cx, self.dx, self.ex]
-        # z = zip(subplots, plot_labels)
-        # for i, (ax_i, plot_label) in enumerate(z, start=self.n_images+1):
-        #     ax_i.text(0, 0, f'({string.ascii_uppercase[i]}) {plot_label}', 
-        #         transform=ax_i.transAxes, va='bottom', color='k', fontsize=15)
+        plot_labels = (
+            'HILT',
+        )
+        subplots = [self.bx]
+        z = zip(subplots, plot_labels)
+        for i, (ax_i, plot_label) in enumerate(z, start=self.n_images+1):
+            ax_i.text(0, 0.99, f'({string.ascii_uppercase[i]}) {plot_label}', 
+                transform=ax_i.transAxes, va='top', color='k', fontsize=15)
 
         plt.suptitle(f'Example Triple Conjunction | THEMIS-THEMIS ASI-SAMPEX', fontsize=15)
         plt.subplots_adjust(hspace=0.10, wspace=0.01, top=0.93, bottom=0.2, left=0.09, right=0.95)
@@ -409,13 +407,36 @@ class Sampex_Themis_ASI(Themis_Themis_ASI):
             plt.show()
         return
 
+    def _load_sampex(self):
+        self.hilt = sampex.HILT(self.row['start']).load()
+
+        # At a 6-second cadence
+        footprint = SAMPEX_footprint(self.time_range[0]).map(alt=self.map_alt)
+
+        # At a 3-second cadence.
+        asi_times, _ = asilib.load_image('THEMIS', self.asi_location, 
+            time_range=(self.time_range[0]-pd.Timedelta(seconds=3), self.time_range[1])
+        )
+        asi_times_df = pd.DataFrame(index=asi_times)
+
+        # The merge will double the time cadence to 3 seconds and the new times will have
+        # an associated NaNs. df.interpolate will interpolate over the NaN values.
+        footprint = pd.merge_asof(
+            asi_times_df, footprint, 
+            left_index=True, right_index=True, 
+            tolerance=pd.Timedelta(seconds=3),  # Maximum expected time difference.
+            direction='nearest'
+            )
+        self.footprint = footprint.interpolate(method='time', limit_area='inside').dropna()
+        return
+
     def _create_empty_subplots(self):
         """
         Create the empty subplot layout and make the subplots
         as class attributes. 
         """
-        self.fig = plt.figure(figsize=(10, 7))
-        self.spec = gridspec.GridSpec(nrows=3, ncols=self.n_images, figure=self.fig, height_ratios=(2, 1, 1))
+        self.fig = plt.figure(figsize=(10, 5))
+        self.spec = gridspec.GridSpec(nrows=2, ncols=self.n_images, figure=self.fig, height_ratios=(2, 1))
 
         # ASI map subplots
         self.ax = self.n_images*[None]
@@ -426,14 +447,14 @@ class Sampex_Themis_ASI(Themis_Themis_ASI):
         # HILT
         self.bx = self.fig.add_subplot(self.spec[1, :])
         self.bx.tick_params(axis="x", labelbottom=False)
-        # PET
-        self.cx = self.fig.add_subplot(self.spec[2, :], sharex=self.bx)
+        # # PET
+        # self.cx = self.fig.add_subplot(self.spec[2, :], sharex=self.bx)
 
-        self.cx.xaxis.set_major_formatter(FuncFormatter(self.format_xaxis))
-        self.cx.xaxis.set_major_locator(matplotlib.dates.SecondLocator(interval=10))
+        self.bx.xaxis.set_major_formatter(FuncFormatter(self.format_xaxis))
+        self.bx.xaxis.set_major_locator(matplotlib.dates.SecondLocator(interval=10))
 
-        self.cx.set_xlabel('\n'.join(['Time'] + list(self.x_labels.keys())))
-        self.cx.xaxis.set_label_coords(-0.07, -0.09)
+        self.bx.set_xlabel('\n'.join(['Time'] + list(self.x_labels.keys())))
+        self.bx.xaxis.set_label_coords(-0.07, -0.09)
         return
 
 
@@ -497,31 +518,17 @@ class Sampex_Themis_ASI(Themis_Themis_ASI):
         _ax.xaxis.set_minor_locator(matplotlib.dates.SecondLocator())
         _ax.set_xlim(*self.time_range)
         _ax.set_yscale('log')
-
-        _ax.set_ylabel(f'HILT\n>1 MeV electrons\n[counts/20 ms]')
+        _ax.set_ylabel(f'>1 MeV electrons\n[counts/20 ms]')
         return
-    
-    def _load_sampex(self):
-        self.hilt = sampex.HILT(self.row['start']).load()
 
-        # At a 6-second cadence
-        footprint = SAMPEX_footprint(self.time_range[0]).map(alt=self.map_alt)
-
-        # At a 3-second cadence.
-        asi_times, _ = asilib.load_image('THEMIS', self.asi_location, 
-            time_range=(self.time_range[0]-pd.Timedelta(seconds=3), self.time_range[1])
-        )
-        asi_times_df = pd.DataFrame(index=asi_times)
-
-        # The merge will double the time cadence to 3 seconds and the new times will have
-        # an associated NaNs. df.interpolate will interpolate over the NaN values.
-        footprint = pd.merge_asof(
-            asi_times_df, footprint, 
-            left_index=True, right_index=True, 
-            tolerance=pd.Timedelta(seconds=3),  # Maximum expected time difference.
-            direction='nearest'
-            )
-        self.footprint = footprint.interpolate(method='time', limit_area='inside').dropna()
+    def _plot_pet(self, _ax):
+        pet = sampex.PET(self.time_range[0]).load()
+        # Factor of two since PET accumulated counts over 50 ms, but the timestamps are at
+        # every 100 ms.
+        pet['P1_Rate'] = 2*pet['P1_Rate']
+        _ax.step(pet.index, pet['P1_Rate'], label='PET', where='post')
+        _ax.set_yscale('log')
+        _ax.set_ylabel(f'>400 keV electrons\n[counts/100 ms]')
         return
 
     def format_xaxis(self, tick_val, _):
