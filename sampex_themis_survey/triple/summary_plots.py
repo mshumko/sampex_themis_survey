@@ -478,9 +478,15 @@ class Sampex_Themis_ASI(Themis_Themis_ASI):
     def _plot_sampex_footprint(self, _ax):
         for ax_i, t in zip(_ax, self.image_times):
             ax_i.plot(self.footprint.loc[:, 'GEO_Long'], self.footprint.loc[:, 'GEO_Lat'], 'r:')
+
+            nearest_time_i = np.argmin(np.abs(self.footprint.index - t))
+            nearest_time = self.footprint.index[nearest_time_i]
+            if np.abs(nearest_time - t).total_seconds() > 6:
+                # return ''
+                raise ValueError(f'Nearest timestamp to tick_time is more than 6 seconds away')
             ax_i.scatter(
-                self.footprint.loc[t, 'GEO_Long'], 
-                self.footprint.loc[t, 'GEO_Lat'],
+                self.footprint.loc[nearest_time, 'GEO_Long'], 
+                self.footprint.loc[nearest_time, 'GEO_Lat'],
                 c='red', s=150, marker='.',
                 )
         return
@@ -492,7 +498,7 @@ class Sampex_Themis_ASI(Themis_Themis_ASI):
         _ax.set_xlim(*self.time_range)
         _ax.set_yscale('log')
 
-        _ax.set_ylabel(f'>1 MeV electrons\n[counts/20 ms]')
+        _ax.set_ylabel(f'HILT\n>1 MeV electrons\n[counts/20 ms]')
         return
     
     def _load_sampex(self):
