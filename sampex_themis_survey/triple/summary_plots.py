@@ -147,7 +147,7 @@ class Themis_Themis_ASI:
             ax_i.text(0, 0, f'({string.ascii_uppercase[i]}) {plot_label}', 
                 transform=ax_i.transAxes, va='bottom', color='k', fontsize=15)
 
-        plt.suptitle(f'Example Triple Conjunction | THEMIS-THEMIS ASI-SAMPEX', fontsize=15)
+        plt.suptitle(f'Example Triple Conjunction | THEMIS Probe-THEMIS ASI', fontsize=15)
 
         # plt.legend()
         plt.subplots_adjust(wspace=0.02, hspace=0.07, left=0.055, right=0.92, top=0.943)
@@ -335,6 +335,8 @@ class Sampex_Themis_ASI(Themis_Themis_ASI):
         """
         Loop over every conjunction and load the data.
         """
+        self._create_empty_subplots()
+
         current_date = date.min
         for _, self.row in self.c_df.iterrows():
             self.asi_location = self.row['Conjunction Between'].split('and')[0].rstrip().split(' ')[1]
@@ -366,7 +368,9 @@ class Sampex_Themis_ASI(Themis_Themis_ASI):
         """
         Creates the subplot layout and dispatches the plotting to the other methods.
         """
-        self._create_empty_subplots()
+        for ax_i in self.ax:
+            ax_i.clear()
+        self.bx.clear()
 
         # -1 so that image_time[-1] == time_range[1]
         dt = (self.time_range[1]-self.time_range[0])/(self.n_images-1)
@@ -378,10 +382,10 @@ class Sampex_Themis_ASI(Themis_Themis_ASI):
             self._plot_hilt(self.bx)
         except (FileNotFoundError, KeyError) as err:
             if 'does not contain any hyper references containing' in str(err):  # No file
-                return
+                pass
             elif isinstance(err, KeyError):  # No HILT data throughout self.time_range.
-                logging.info(f'SAMPEX-HILT did not have continuos data for {self.time_range}')
-                return
+                logging.info(f'SAMPEX-HILT did not have continuos data in {self.time_range=}')
+                pass
             else:
                 raise
         # try:
@@ -392,7 +396,7 @@ class Sampex_Themis_ASI(Themis_Themis_ASI):
         #     else:
         #         raise
 
-        # Annotate and clean up the plot.
+        # Annotate and tidy up the plot.
         plot_labels = (
             'HILT',
         )
@@ -402,7 +406,13 @@ class Sampex_Themis_ASI(Themis_Themis_ASI):
             ax_i.text(0, 0.99, f'({string.ascii_uppercase[i]}) {plot_label}', 
                 transform=ax_i.transAxes, va='top', color='k', fontsize=15)
 
-        plt.suptitle(f'Example Triple Conjunction | THEMIS-THEMIS ASI-SAMPEX', fontsize=15)
+        self.bx.xaxis.set_major_formatter(FuncFormatter(self.format_xaxis))
+        self.bx.xaxis.set_major_locator(matplotlib.dates.SecondLocator(interval=10))
+
+        self.bx.set_xlabel('\n'.join(['Time'] + list(self.x_labels.keys())))
+        self.bx.xaxis.set_label_coords(-0.07, -0.09)
+
+        plt.suptitle(f'Example Triple Conjunction | THEMIS ASI-SAMPEX', fontsize=15)
         plt.subplots_adjust(hspace=0.10, wspace=0.01, top=0.93, bottom=0.2, left=0.09, right=0.95)
         if save:
             save_time = self.row['start'].strftime("%Y%m%d_%H%M%S")
@@ -416,23 +426,11 @@ class Sampex_Themis_ASI(Themis_Themis_ASI):
         self.hilt = sampex.HILT(self.row['start']).load()
 
         # At a 6-second cadence
-        footprint = SAMPEX_footprint(self.time_range[0]).map(alt=self.map_alt)
-
-        # At a 3-second cadence.
-        asi_times, _ = asilib.load_image('THEMIS', self.asi_location, 
-            time_range=(self.time_range[0]-pd.Timedelta(seconds=3), self.time_range[1])
-        )
-        asi_times_df = pd.DataFrame(index=asi_times)
-
-        # The merge will double the time cadence to 3 seconds and the new times will have
-        # an associated NaNs. df.interpolate will interpolate over the NaN values.
-        footprint = pd.merge_asof(
-            asi_times_df, footprint, 
-            left_index=True, right_index=True, 
-            tolerance=pd.Timedelta(seconds=3),  # Maximum expected time difference.
-            direction='nearest'
-            )
-        self.footprint = footprint.interpolate(method='time', limit_area='inside').dropna()
+        self.footprint = SAMPEX_footprint(self.time_range[0]).map(alt=self.map_alt)
+        # Resample to a higher cadence and linearly interpolate the footprint values for more 
+        # accurate location. Necessary for 1) plotting the instaneous SAMPEX position at the imager time, 
+        # and 2) the stacked x-axis labels.
+        self.footprint = self.footprint.resample('1S').interpolate()
         return
 
     def _create_empty_subplots(self):
@@ -451,17 +449,7 @@ class Sampex_Themis_ASI(Themis_Themis_ASI):
             self.ax[i].get_yaxis().set_visible(False)
         # HILT
         self.bx = self.fig.add_subplot(self.spec[1, :])
-        # self.bx.tick_params(axis="x", labelbottom=False)
-        # # PET
-        # self.cx = self.fig.add_subplot(self.spec[2, :], sharex=self.bx)
-
-        self.bx.xaxis.set_major_formatter(FuncFormatter(self.format_xaxis))
-        self.bx.xaxis.set_major_locator(matplotlib.dates.SecondLocator(interval=10))
-
-        self.bx.set_xlabel('\n'.join(['Time'] + list(self.x_labels.keys())))
-        self.bx.xaxis.set_label_coords(-0.07, -0.09)
         return
-
 
     def _plot_asi_images(self, _ax):
         """
@@ -503,13 +491,21 @@ class Sampex_Themis_ASI(Themis_Themis_ASI):
 
     def _plot_sampex_footprint(self, _ax):
         for ax_i, t in zip(_ax, self.image_times):
-            ax_i.plot(self.footprint.loc[:, 'GEO_Long'], self.footprint.loc[:, 'GEO_Lat'], 'r:')
+            ax_i.plot(
+                self.footprint.loc[self.time_range[0]:self.time_range[1], 'GEO_Long'], 
+                self.footprint.loc[self.time_range[0]:self.time_range[1], 'GEO_Lat'], 
+                'r:')
 
             nearest_time_i = np.argmin(np.abs(self.footprint.index - t))
             nearest_time = self.footprint.index[nearest_time_i]
-            if np.abs(nearest_time - t).total_seconds() > 7:
+            dt = np.abs(nearest_time - t).total_seconds()
+
+            if dt > 3:
                 # return ''
-                raise ValueError(f'Nearest timestamp to tick_time is more than 6 seconds away')
+                raise ValueError(
+                    f'Nearest timestamp to tick_time is {dt} seconds away '
+                    '(more than the allowable 3-second threshold)'
+                    )
             ax_i.scatter(
                 self.footprint.loc[nearest_time, 'GEO_Long'], 
                 self.footprint.loc[nearest_time, 'GEO_Lat'],
@@ -522,7 +518,7 @@ class Sampex_Themis_ASI(Themis_Themis_ASI):
         _ax.plot(filtered_hilt.index, filtered_hilt['counts'], c='r')
         _ax.xaxis.set_minor_locator(matplotlib.dates.SecondLocator())
         _ax.set_xlim(*self.time_range)
-        _ax.set_yscale('log')
+        # _ax.set_yscale('log')
         _ax.set_ylabel(f'>1 MeV electrons\n[counts/20 ms]')
         return
 
