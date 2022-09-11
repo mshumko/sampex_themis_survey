@@ -380,7 +380,9 @@ class Sampex_Themis_ASI(Themis_Themis_ASI):
 
         try:
             self._plot_hilt(self.bx)
+            sampex_loaded=True  # A hack to get around the 
         except (FileNotFoundError, KeyError) as err:
+            sampex_loaded=False
             if 'does not contain any hyper references containing' in str(err):  # No file
                 pass
             elif isinstance(err, KeyError):  # No HILT data throughout self.time_range.
@@ -406,8 +408,9 @@ class Sampex_Themis_ASI(Themis_Themis_ASI):
             ax_i.text(0, 0.99, f'({string.ascii_uppercase[i]}) {plot_label}', 
                 transform=ax_i.transAxes, va='top', color='k', fontsize=15)
 
-        self.bx.xaxis.set_major_formatter(FuncFormatter(self.format_xaxis))
-        self.bx.xaxis.set_major_locator(matplotlib.dates.SecondLocator(interval=10))
+        if sampex_loaded:
+            self.bx.xaxis.set_major_formatter(FuncFormatter(self.format_xaxis))
+            self.bx.xaxis.set_major_locator(matplotlib.dates.SecondLocator(interval=10))
 
         self.bx.set_xlabel('\n'.join(['Time'] + list(self.x_labels.keys())))
         self.bx.xaxis.set_label_coords(-0.07, -0.09)
@@ -540,9 +543,13 @@ class Sampex_Themis_ASI(Themis_Themis_ASI):
         # Find the nearest time within 6 seconds (the cadence of the SAMPEX attitude files)
         tick_time = matplotlib.dates.num2date(tick_val).replace(tzinfo=None)
         i_min_time = np.argmin(np.abs(self.footprint.index - tick_time))
-        if np.abs(self.footprint.index[i_min_time] - tick_time).total_seconds() > 6:
+        dt = np.abs(self.footprint.index[i_min_time] - tick_time).total_seconds()
+        if dt > 6:
             # return ''
-            raise ValueError(f'Nearest timestamp to tick_time is more than 6 seconds away')
+            raise ValueError(
+                    f'Nearest timestamp to tick_time is {dt} seconds away '
+                    '(more than the allowable 6-second threshold)'
+                    )
         pd_index = self.footprint.index[i_min_time]
         # Cast np.array as strings so that it can insert the time string. 
         values = self.footprint.loc[pd_index, self.x_labels.values()].to_numpy().round(2).astype(str)
