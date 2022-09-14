@@ -368,6 +368,17 @@ class Sampex_Themis_ASI(Themis_Themis_ASI):
         
         return
 
+    def plot_one_conjunction(self, asi_location, time_range):
+        self.time_range = time_range
+        self.asi_location = asi_location
+        self._create_empty_subplots()
+
+        self.row = {}
+        self.row['start'] = self.time_range[0]
+        self._load_sampex()
+        self.plot(save=False)
+        return
+
     def plot(self, save=True):
         """
         Creates the subplot layout and dispatches the plotting to the other methods.
@@ -565,7 +576,10 @@ class Sampex_Themis_ASI(Themis_Themis_ASI):
 
 if __name__ == '__main__':
     filename = 'sampex_themis_asi_themis_aurorax_conjunctions_500_km.xlsx'
-    s = Themis_Themis_ASI(filename)
-    s.loop()
-    # s = Sampex_Themis_ASI(filename)
+    # s = Themis_Themis_ASI(filename)
     # s.loop()
+    s = Sampex_Themis_ASI(filename)
+    # s.loop()
+    s.plot_one_conjunction('FSMI', 
+        (datetime(2008, 3, 4, 5, 49, 0), datetime(2008, 3, 4, 5, 50, 40))
+        )
