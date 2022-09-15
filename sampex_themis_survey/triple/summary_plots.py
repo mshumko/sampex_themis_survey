@@ -575,11 +575,15 @@ class Sampex_Themis_ASI(Themis_Themis_ASI):
 
 
 if __name__ == '__main__':
-    filename = 'sampex_themis_asi_themis_aurorax_conjunctions_500_km.xlsx'
-    # s = Themis_Themis_ASI(filename)
-    # s.loop()
+    # filename = 'sampex_themis_asi_themis_aurorax_conjunctions_500_km.xlsx'
+    # # s = Themis_Themis_ASI(filename)
+    # # s.loop()
+    # s = Sampex_Themis_ASI(filename)
+    # # s.loop()
+    # s.plot_one_conjunction('FSMI', 
+    #     (datetime(2008, 3, 4, 5, 49, 0), datetime(2008, 3, 4, 5, 50, 40))
+    #     )
+    
+    filename = 'sampex_themis_asi_rbsp_aurorax_conjunctions_1000_km.xlsx'
     s = Sampex_Themis_ASI(filename)
-    # s.loop()
-    s.plot_one_conjunction('FSMI', 
-        (datetime(2008, 3, 4, 5, 49, 0), datetime(2008, 3, 4, 5, 50, 40))
-        )
+    s.loop()
