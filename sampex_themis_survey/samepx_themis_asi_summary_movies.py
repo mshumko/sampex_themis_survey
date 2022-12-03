@@ -11,10 +11,10 @@ import asilib  # Need to install from the Imager branch on GitHub
 import matplotlib.pyplot as plt
 import matplotlib.dates
 from matplotlib.ticker import FuncFormatter
+import sampex
 
-from sampex_survey import config
-from sampex_survey.footprint import SAMPEX_footprint 
-from proton_aurora.load import sampex
+from sampex_themis_survey import config
+from sampex_themis_survey.footprint import SAMPEX_footprint 
 
 alt = 110  # km
 box = (10, 10)  # km
@@ -55,8 +55,7 @@ def format_fn(tick_val, tick_pos):
 for _, row in conjunction_list.iterrows():
     if current_date != row['start'].date:
         # Load the SAMPEX-HILT data for this day.
-        hilt = sampex.Load_HILT(row['start'])
-        hilt.resolve_counts_state4()
+        hilt = sampex.HILT(row['start']).load()
         current_date = row['start'].date
     print(f'Processing {row["start"]}')
 
@@ -97,9 +96,9 @@ for _, row in conjunction_list.iterrows():
     fig, ax = plt.subplots(3, gridspec_kw={'height_ratios':[3, 1, 1]}, figsize=(6, 10))
     ax[1].sharex(ax[2])  # Connect the two subplots to remove the extra time axis.
 
-    hilt_copy = hilt.hilt_resolved[
-        (hilt.hilt_resolved.index >= time_range[0]) &
-        (hilt.hilt_resolved.index <= time_range[1])
+    hilt_copy = hilt[
+        (hilt.index >= time_range[0]) &
+        (hilt.index <= time_range[1])
     ]
 
     img_gen = img.animate_fisheye_gen(ax=ax[0], overwrite=True)
