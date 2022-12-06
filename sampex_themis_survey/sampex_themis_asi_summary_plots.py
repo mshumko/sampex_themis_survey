@@ -19,7 +19,7 @@ from sampex_themis_survey import config
 from sampex_themis_survey.footprint import SAMPEX_footprint
 
 class Summary:
-    def __init__(self, conjunction_name, plot_pad_s=30, n_images=3, map_alt=110) -> None:
+    def __init__(self, conjunction_name, plot_pad_s=30, n_images=4, map_alt=110) -> None:
         """
         Make summary plots of THEMIS ASI-SAMPEX conjunctions using a
         pre-computed conjunction list.
@@ -76,6 +76,7 @@ class Summary:
             self._plot_footprint()
             self._plot_hilt()
             self._format_bx()
+            self._plot_connecting_lines()
             plt.suptitle(
                 f'{self.row["start"].date()} | '
                 f'THEMIS {self.row["asi"].upper()}-SAMPEX Conjunction | '
@@ -124,7 +125,7 @@ class Summary:
             0, 0.99, f'({string.ascii_uppercase[self.n_images]}) SAMPEX-HILT', 
             va='top', transform=self.bx.transAxes, weight='bold', fontsize=15
             )
-        self.bx.set_xlim(self.time_range)
+        self.bx.set_xlim(self.actual_image_times[0], self.actual_image_times[-1])
         return
 
     def _clear_plot(self):
@@ -145,7 +146,7 @@ class Summary:
             self.map_alt in skymap['FULL_MAP_ALTITUDE'] / 1000
         ), f'{self.map_alt} km is not in skymap calibration altitudes: {skymap["FULL_MAP_ALTITUDE"]/1000} km'
         alt_index = np.where(skymap['FULL_MAP_ALTITUDE'] / 1000 == self.map_alt)[0][0]
-        idx_horizon = np.where(skymap['FULL_ELEVATION'] < 20)
+        idx_horizon = np.where(skymap['FULL_ELEVATION'] < 50)
         lat_map = skymap['FULL_MAP_LATITUDE'][alt_index, :, :].copy()
         lon_map = skymap['FULL_MAP_LONGITUDE'][alt_index, :, :].copy()
         lat_map[idx_horizon] = np.nan
@@ -213,6 +214,21 @@ class Summary:
             ).dropna()
         return
 
+    def _plot_connecting_lines(self):
+        """ 
+        Draw lines connecting the subplots in the 0th row with the subplot 
+        in the 1st row. 
+        """
+        z = zip(self.ax, matplotlib.dates.date2num(self.actual_image_times))
+        for ax_i, image_time_numeric in z:
+            line = matplotlib.patches.ConnectionPatch(
+                xyA=(0.5, 0), coordsA=ax_i.transAxes,
+                xyB=(image_time_numeric, self.bx.get_ylim()[1]), coordsB=self.bx.transData, 
+                ls='--')
+            ax_i.add_artist(line)
+            self.bx.axvline(image_time_numeric, c='k', ls='--', alpha=1) 
+        return
+
     def _format_fn(self, tick_val, tick_pos):
         """
         The tick magic happens here. pyplot gives it a tick time, and this function 
@@ -256,35 +272,3 @@ if __name__ == '__main__':
     conjunction_name = f'sampex_themis_asi_conjunctions_filtered.csv'
     s = Summary(conjunction_name)
     s.loop()
-
-# # Second row
-# bx.plot(hilt.index, hilt['counts'], c='r')
-# bx.xaxis.set_minor_locator(matplotlib.dates.SecondLocator())
-# bx.set_xlim(*plot_time_range)
-
-# for ax_i, image_time_numeric in zip(ax, matplotlib.dates.date2num(nearest_asi_image_times)):
-#     # Connecting lines between subplots
-#     line = matplotlib.patches.ConnectionPatch(
-#         xyA=(0.5, 0), coordsA=ax_i.transAxes,
-#         xyB=(image_time_numeric, bx.get_ylim()[1]), coordsB=bx.transData, 
-#         ls='--')
-#     ax_i.add_artist(line)
-#     bx.axvline(image_time_numeric, c='k', ls='--', alpha=1)
-
-#     ax_i.annotate("Pulsating\naurora", 
-#             xy=(-136, 61.24), xytext=(-133.97, 60.27),
-#             arrowprops=dict(arrowstyle="->", color='yellow'), color='yellow')
-
-# microburst_arrow_times = matplotlib.dates.date2num([
-#     datetime(2007, 2, 14, 13, 30, 39),
-#     datetime(2007, 2, 14, 13, 30, 36),
-#     datetime(2007, 2, 14, 13, 30, 42),
-#     ])
-# bx.annotate("Microbursts", 
-#     xy=(microburst_arrow_times[1], 705), 
-#     xytext=(microburst_arrow_times[0], 1500),
-#     arrowprops=dict(arrowstyle="->"), color='k', ha='center')
-# bx.annotate("", 
-#     xy=(microburst_arrow_times[2], 953), 
-#     xytext=(microburst_arrow_times[0], 1500),
-#     arrowprops=dict(arrowstyle="->"), color='k', ha='center')  
