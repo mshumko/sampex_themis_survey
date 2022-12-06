@@ -73,6 +73,7 @@ class Summary:
             # image or not.
             self.actual_image_times = self._plot_images(image_times)
             self._get_footprint()
+            self._plot_footprint()
             self._plot_hilt()
             self._format_bx()
             plt.suptitle(
@@ -85,6 +86,10 @@ class Summary:
         return
 
     def _init_plot(self):
+        """
+        Initialize a plot with two rows. First row for self.n_images number of
+        images and the second row the SAMPEX HILT data.
+        """
         self.fig = plt.figure(figsize=(10, 5))
         spec = gridspec.GridSpec(
             nrows=2, ncols=self.n_images, figure=self.fig, height_ratios=(2, 1)
@@ -105,6 +110,10 @@ class Summary:
         return
 
     def _format_bx(self):
+        """
+        Format the bx subplot with x-axis labels and connect to the x-axis
+        formatter function.
+        """
         self.bx.xaxis.set_major_formatter(FuncFormatter(self._format_fn))
         self.bx.xaxis.set_major_locator(matplotlib.dates.SecondLocator(interval=10))
 
@@ -119,6 +128,9 @@ class Summary:
         return
 
     def _clear_plot(self):
+        """
+        Clears the plot for the next iteration.
+        """
         for ax_i in self.ax:
             ax_i.clear()
         self.bx.clear()
@@ -132,13 +144,14 @@ class Summary:
             self.map_alt in skymap['FULL_MAP_ALTITUDE'] / 1000
         ), f'{self.map_alt} km is not in skymap calibration altitudes: {skymap["FULL_MAP_ALTITUDE"]/1000} km'
         alt_index = np.where(skymap['FULL_MAP_ALTITUDE'] / 1000 == self.map_alt)[0][0]
+        idx_horizon = np.where(skymap['ELEVATION'] > 10)
         lat_bounds = [
-            np.nanmin(skymap['FULL_MAP_LATITUDE'][alt_index, :, :]), 
-            np.nanmax(skymap['FULL_MAP_LATITUDE'][alt_index, :, :])
+            np.nanmin(skymap['FULL_MAP_LATITUDE'][alt_index, idx_horizon[0], idx_horizon[1]]), 
+            np.nanmax(skymap['FULL_MAP_LATITUDE'][alt_index, idx_horizon[0], idx_horizon[1]])
             ]
         lon_bounds = [
-            np.nanmin(skymap['FULL_MAP_LONGITUDE'][alt_index, :, :]), 
-            np.nanmax(skymap['FULL_MAP_LONGITUDE'][alt_index, :, :])
+            np.nanmin(skymap['FULL_MAP_LONGITUDE'][alt_index, idx_horizon[0], idx_horizon[1]]), 
+            np.nanmax(skymap['FULL_MAP_LONGITUDE'][alt_index, idx_horizon[0], idx_horizon[1]])
         ]
 
         z = zip(self.ax, image_times, string.ascii_uppercase[:self.n_images])
@@ -148,10 +161,24 @@ class Summary:
                 ax=ax_i, asi_label=False, color_bounds=None, pcolormesh_kwargs={'rasterized':True})
             nearest_asi_image_times.append(t)
             ax_i.text(
-                0, 0, f'({subplot_letter}) {t.strftime("%H:%M:%S")}',
-                transform=ax_i.transAxes
+                0, 0.98, f'({subplot_letter}) {t.strftime("%H:%M:%S")}',
+                transform=ax_i.transAxes, weight='bold', fontsize=15, va='top',
+                color='purple'
                 )
         return nearest_asi_image_times
+    
+    def _plot_footprint(self):
+        for (ax_i, t) in zip(self.ax, self.actual_image_times):
+            ax_i.plot(self.footprint.loc[:, 'GEO_Long'], self.footprint.loc[:, 'GEO_Lat'], 'r:')
+
+            dt = [(t - t_fp).total_seconds() for t_fp in self.footprint.index]
+            footprint_time = self.footprint.index[np.argmin(np.abs(dt))]
+            ax_i.scatter(
+                self.footprint.loc[footprint_time, 'GEO_Long'], 
+                self.footprint.loc[footprint_time, 'GEO_Lat'],
+                c='red', s=150, marker='.',
+                )
+        return
 
     def _plot_hilt(self):
         hilt_flt = self.hilt.loc[
@@ -230,44 +257,6 @@ if __name__ == '__main__':
     conjunction_name = f'sampex_themis_asi_conjunctions_filtered.csv'
     s = Summary(conjunction_name)
     s.loop()
-
-# if color_footprint:
-#     # Need to smooth so the microburst intervals are well defined.
-#     smooth_sec = 5
-#     smoothed_hilt = hilt.rolling(int(smooth_sec//20E-3), center=True).max()
-#     resampled_counts = pd.merge_asof(
-#         footprint, smoothed_hilt, 
-#         left_index=True, right_index=True, 
-#         tolerance=pd.Timedelta(seconds=20E-3), 
-#         direction='nearest'
-#         )
-#     # See example:
-#     # https://matplotlib.org/stable/gallery/lines_bars_and_markers/multicolored_line.html
-#     points = np.array(
-#         [resampled_counts.loc[:, 'GEO_Long'], resampled_counts.loc[:, 'GEO_Lat']]
-#         ).T.reshape(-1, 1, 2)
-#     segments = np.concatenate([points[:-1], points[1:]], axis=1)
-#     cmap = matplotlib.colors.ListedColormap(['r', 'g', 'b'])
-#     norm = matplotlib.colors.BoundaryNorm([1E2, 1e3], cmap.N)
-
-# # First row
-# for (ax_i, t, subplot_letter) in zip(ax, nearest_asi_image_times, string.ascii_uppercase[:n]):
-#     # Determine how to plot the entire footprint.
-#     if color_footprint:
-#         lc = matplotlib.collections.LineCollection(segments, cmap=cmap, norm=norm)
-#         lc.set_array(resampled_counts['counts'])
-#         lc.set_linewidth(2)
-#         line = ax_i.add_collection(lc)
-#     else:
-#         ax_i.plot(footprint.loc[:, 'GEO_Long'], footprint.loc[:, 'GEO_Lat'], 'r:')
-#     ax_i.scatter(
-#         footprint.loc[t, 'GEO_Long'], 
-#         footprint.loc[t, 'GEO_Lat'],
-#         c='red', s=150, marker='.',
-#         )
-
-#     ax_i.text(0, 1, f'({subplot_letter}) {t.strftime("%H:%M:%S")}', 
-#         transform=ax_i.transAxes, va='top', color='white', fontsize=15)
 
 # # Second row
 # bx.plot(hilt.index, hilt['counts'], c='r')
