@@ -19,7 +19,8 @@ from sampex_themis_survey import config
 from sampex_themis_survey.footprint import SAMPEX_footprint
 
 class Summary:
-    def __init__(self, conjunction_name, plot_pad_s=30, n_images=4, map_alt=110) -> None:
+    def __init__(self, conjunction_name, plot_pad_s=30, n_images=4, 
+                map_alt=110) -> None:
         """
         Make summary plots of THEMIS ASI-SAMPEX conjunctions using a
         pre-computed conjunction list.
@@ -35,7 +36,7 @@ class Summary:
         n_images: int
             The number of ASI images to plot in the first row.
         map_alt: int
-            The footprint map altitude in kilometers.
+            The footprint map altitude in kilometers.  
         """
         self.conjunction_name = conjunction_name
         self.plot_pad_s = plot_pad_s
@@ -52,6 +53,11 @@ class Summary:
         Loop over every conjunction and make a summary plot.
         """
         self.current_date = date.min
+        plot_save_dir = config['plots_dir'] / datetime.now().strftime('%Y%m%d')
+        if not plot_save_dir.exists():
+            plot_save_dir.mkdir(parents=True)
+            print(f'Created a {str(plot_save_dir)=} directory.')
+
         self._init_plot()
 
         for (i, self.row) in self.conjunction_list.iterrows():
@@ -82,7 +88,17 @@ class Summary:
                 f'THEMIS {self.row["asi"].upper()}-SAMPEX Conjunction | '
                 f'{self.map_alt} km footprint', 
                 fontsize=15)
-            plt.show()
+
+            plot_save_name = (
+                f'{self.row["start"].strftime("%Y%m%d")}_'
+                f'{self.row["start"].strftime("%H%M%S")}_'
+                f'{self.row["end"].strftime("%H%M%S")}_'
+                f'themis_{self.row["asi"].lower()}_'
+                f'sampex_conjunction.png'
+                )
+            plt.savefig(plot_save_dir / plot_save_name)
+            with open(self.last_movie_path, 'w') as f:
+                f.write(self.row['start'].isoformat())
             self._clear_plot()  # After every iteration.
         return
 
@@ -259,9 +275,9 @@ class Summary:
         self.conjunction_list['start'] = pd.to_datetime(self.conjunction_list['start'])
         self.conjunction_list['end'] = pd.to_datetime(self.conjunction_list['end'])
 
-        last_movie_path = pathlib.Path(config['data_dir'], 'last_summary_movie.txt')
-        if last_movie_path.exists():
-            with open(last_movie_path, 'r') as f:
+        self.last_movie_path = pathlib.Path(config['data_dir'], 'last_summary_movie.txt')
+        if self.last_movie_path.exists():
+            with open(self.last_movie_path, 'r') as f:
                 last_movie_time = dateutil.parser.parse(f.read())
             self.conjunction_list = self.conjunction_list[
                 self.conjunction_list['start'] > last_movie_time
