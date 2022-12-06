@@ -79,7 +79,7 @@ class Summary:
             plt.suptitle(
                 f'{self.row["start"].date()} | '
                 f'THEMIS {self.row["asi"].upper()}-SAMPEX Conjunction | '
-                f'footprint {self.map_alt=} km', 
+                f'{self.map_alt} km footprint', 
                 fontsize=15)
             plt.show()
             self._clear_plot()  # After every iteration.
@@ -145,7 +145,7 @@ class Summary:
             self.map_alt in skymap['FULL_MAP_ALTITUDE'] / 1000
         ), f'{self.map_alt} km is not in skymap calibration altitudes: {skymap["FULL_MAP_ALTITUDE"]/1000} km'
         alt_index = np.where(skymap['FULL_MAP_ALTITUDE'] / 1000 == self.map_alt)[0][0]
-        idx_horizon = np.where(skymap['ELEVATION'] > 10)
+        idx_horizon = np.where(skymap['FULL_ELEVATION'] < 20)
         lat_map = skymap['FULL_MAP_LATITUDE'][alt_index, :, :].copy()
         lon_map = skymap['FULL_MAP_LONGITUDE'][alt_index, :, :].copy()
         lat_map[idx_horizon] = np.nan
