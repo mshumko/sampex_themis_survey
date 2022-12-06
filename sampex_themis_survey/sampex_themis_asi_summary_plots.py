@@ -139,20 +139,19 @@ class Summary:
     def _plot_images(self, image_times):
         nearest_asi_image_times = []
 
+        # Calculate the lat and lon bounds for pixels above 10 degree elevation.
         skymap = asilib.load_skymap('THEMIS', self.row['asi'], self.row['start'])
         assert (
             self.map_alt in skymap['FULL_MAP_ALTITUDE'] / 1000
         ), f'{self.map_alt} km is not in skymap calibration altitudes: {skymap["FULL_MAP_ALTITUDE"]/1000} km'
         alt_index = np.where(skymap['FULL_MAP_ALTITUDE'] / 1000 == self.map_alt)[0][0]
         idx_horizon = np.where(skymap['ELEVATION'] > 10)
-        lat_bounds = [
-            np.nanmin(skymap['FULL_MAP_LATITUDE'][alt_index, idx_horizon[0], idx_horizon[1]]), 
-            np.nanmax(skymap['FULL_MAP_LATITUDE'][alt_index, idx_horizon[0], idx_horizon[1]])
-            ]
-        lon_bounds = [
-            np.nanmin(skymap['FULL_MAP_LONGITUDE'][alt_index, idx_horizon[0], idx_horizon[1]]), 
-            np.nanmax(skymap['FULL_MAP_LONGITUDE'][alt_index, idx_horizon[0], idx_horizon[1]])
-        ]
+        lat_map = skymap['FULL_MAP_LATITUDE'][alt_index, :, :].copy()
+        lon_map = skymap['FULL_MAP_LONGITUDE'][alt_index, :, :].copy()
+        lat_map[idx_horizon] = np.nan
+        lon_map[idx_horizon] = np.nan
+        lat_bounds = [np.nanmin(lat_map), np.nanmax(lat_map)]
+        lon_bounds = [np.nanmin(lon_map), np.nanmax(lon_map)]
 
         z = zip(self.ax, image_times, string.ascii_uppercase[:self.n_images])
         for i, (ax_i, image_time, subplot_letter) in enumerate(z):
