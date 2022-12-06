@@ -72,11 +72,14 @@ class Summary:
             # actual because self.image_times are calculates regardless of if there is an
             # image or not.
             self.actual_image_times = self._plot_images(image_times)
-            self.bx.set_xlim(self.time_range)
-            plt.suptitle(f'THEMIS {self.row["asi"].upper()}-SAMPEX Conjunction | ' 
-                     f'{self.row["start"].date()} | '
-                     f'footprint {self.map_alt=} km', 
-                     fontsize=15)
+            self._get_footprint()
+            self._plot_hilt()
+            self._format_bx()
+            plt.suptitle(
+                f'{self.row["start"].date()} | '
+                f'THEMIS {self.row["asi"].upper()}-SAMPEX Conjunction | '
+                f'footprint {self.map_alt=} km', 
+                fontsize=15)
             plt.show()
             self._clear_plot()  # After every iteration.
         return
@@ -99,6 +102,20 @@ class Summary:
         plt.subplots_adjust(
             hspace=0.10, wspace=0.01, top=0.93, bottom=0.2, left=0.09, right=0.95
             )
+        return
+
+    def _format_bx(self):
+        self.bx.xaxis.set_major_formatter(FuncFormatter(self._format_fn))
+        self.bx.xaxis.set_major_locator(matplotlib.dates.SecondLocator(interval=10))
+
+        self.bx.set_xlabel('\n'.join(['Time'] + list(self.sampex_x_labels.keys())))
+        self.bx.xaxis.set_label_coords(-0.07, -0.09)
+
+        self.bx.text(
+            0, 0.99, f'({string.ascii_uppercase[self.n_images]}) SAMPEX-HILT', 
+            va='top', transform=self.bx.transAxes, weight='bold', fontsize=15
+            )
+        self.bx.set_xlim(self.time_range)
         return
 
     def _clear_plot(self):
@@ -130,8 +147,63 @@ class Summary:
             t, _, _, _, _ = asilib.plot_map('THEMIS', self.row['asi'], image_time, self.map_alt, 
                 ax=ax_i, asi_label=False, color_bounds=None, pcolormesh_kwargs={'rasterized':True})
             nearest_asi_image_times.append(t)
+            ax_i.text(
+                0, 0, f'({subplot_letter}) {t.strftime("%H:%M:%S")}',
+                transform=ax_i.transAxes
+                )
         return nearest_asi_image_times
 
+    def _plot_hilt(self):
+        hilt_flt = self.hilt.loc[
+            (self.hilt.index > self.time_range[0]) &
+            (self.hilt.index <= self.time_range[1])
+            ]
+        self.bx.plot(hilt_flt.index, hilt_flt['counts'], c='k')
+        self.bx.xaxis.set_minor_locator(matplotlib.dates.SecondLocator())
+        self.bx.set_xlim(self.time_range)
+        return
+
+    def _get_footprint(self):
+        # Now load, map, and interpolate the SAMPEX attitude data
+        asi_times, _ = asilib.load_image('THEMIS', self.row['asi'], 
+            # time_range[0] is padded to include the first SAMPEX attitude point.
+            time_range=(
+                self.time_range[0]-pd.Timedelta(seconds=3), self.time_range[1]
+                )
+            )
+        asi_times_df = pd.DataFrame(index=asi_times)
+        self.footprint = SAMPEX_footprint(self.time_range[0]).map(alt=self.map_alt)
+
+        # The merge will double the time cadence to 3 seconds and the new times will have
+        # an associated NaNs. df.interpolate will interpolate over the NaN values.
+        self.footprint = pd.merge_asof(
+            asi_times_df, self.footprint, 
+            left_index=True, right_index=True, 
+            tolerance=pd.Timedelta(seconds=1), 
+            direction='nearest'
+            )
+        self.footprint = self.footprint.interpolate(
+            method='time', limit_area='inside'
+            ).dropna()
+        return
+
+    def _format_fn(self, tick_val, tick_pos):
+        """
+        The tick magic happens here. pyplot gives it a tick time, and this function 
+        returns the closest label to that time. Read docs for FuncFormatter().
+        """
+        # Find the nearest time within 6 seconds (the cadence of the SAMPEX attitude files)
+        tick_time = matplotlib.dates.num2date(tick_val).replace(tzinfo=None)
+        i_min_time = np.argmin(np.abs(self.footprint.index - tick_time))
+        if np.abs(self.footprint.index[i_min_time] - tick_time).total_seconds() > 3:
+            # return ''
+            raise ValueError(f'Nearest timestamp to tick_time is more than 6 seconds away')
+        pd_index = self.footprint.index[i_min_time]
+        # Cast np.array as strings so that it can insert the time string. 
+        values = self.footprint.loc[pd_index, self.sampex_x_labels.values()].to_numpy().round(2).astype(str)
+        values = np.insert(values, 0, tick_time.strftime('%H:%M:%S'))
+        label = '\n'.join(values)
+        return label
 
     def _load_conjunctions(self):
         """
@@ -158,53 +230,6 @@ if __name__ == '__main__':
     conjunction_name = f'sampex_themis_asi_conjunctions_filtered.csv'
     s = Summary(conjunction_name)
     s.loop()
-
-
-# # Now load, map, and interpolate the SAMPEX attitude data
-# asi_times, _ = asilib.load_image('THEMIS', themis_location_codes[0], 
-#     time_range=(sampex_time_range[0]-pd.Timedelta(seconds=3), sampex_time_range[1]))
-# asi_times_df = pd.DataFrame(index=asi_times)
-# footprint = SAMPEX_footprint(sampex_time_range[0]).map(alt=map_alt)
-
-# # The merge will double the time cadence to 3 seconds and the new times will have
-# # an associated NaNs. df.interpolate will interpolate over the NaN values.
-# footprint = pd.merge_asof(
-#     asi_times_df, footprint, 
-#     left_index=True, right_index=True, 
-#     tolerance=pd.Timedelta(seconds=1), 
-#     direction='nearest'
-#     )
-# footprint = footprint.interpolate(method='time', limit_area='inside').dropna()
-
-# hilt = sampex.HILT(sampex_time_range[0]).load()
-# hilt = hilt.loc[sampex_time_range[0]:sampex_time_range[1], :]
-
-# def format_fn(tick_val, tick_pos):
-#     """
-#     The tick magic happens here. pyplot gives it a tick time, and this function 
-#     returns the closest label to that time. Read docs for FuncFormatter().
-#     """
-#     # Find the nearest time within 6 seconds (the cadence of the SAMPEX attitude files)
-#     tick_time = matplotlib.dates.num2date(tick_val).replace(tzinfo=None)
-#     i_min_time = np.argmin(np.abs(footprint.index - tick_time))
-#     if np.abs(footprint.index[i_min_time] - tick_time).total_seconds() > 3:
-#         # return ''
-#         raise ValueError(f'Nearest timestamp to tick_time is more than 6 seconds away')
-#     pd_index = footprint.index[i_min_time]
-#     # Cast np.array as strings so that it can insert the time string. 
-#     values = footprint.loc[pd_index, sampex_x_labels.values()].to_numpy().round(2).astype(str)
-#     values = np.insert(values, 0, tick_time.strftime('%H:%M:%S'))
-#     label = '\n'.join(values)
-#     return label
-
-# bx.xaxis.set_major_formatter(FuncFormatter(format_fn))
-# bx.xaxis.set_major_locator(matplotlib.dates.SecondLocator(interval=10))
-
-# bx.set_xlabel('\n'.join(['Time'] + list(sampex_x_labels.keys())))
-# bx.xaxis.set_label_coords(-0.07, -0.09)
-
-# bx.text(0, 0.99, f'({string.ascii_uppercase[n]}) SAMPEX-HILT', va='top', 
-#     transform=bx.transAxes, weight='bold', fontsize=15)
 
 # if color_footprint:
 #     # Need to smooth so the microburst intervals are well defined.
