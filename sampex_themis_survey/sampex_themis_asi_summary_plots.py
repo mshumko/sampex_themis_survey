@@ -19,7 +19,7 @@ from sampex_themis_survey import config
 from sampex_themis_survey.footprint import SAMPEX_footprint
 
 class Summary:
-    def __init__(self, conjunction_name, plot_pad_s=30, n_images=3) -> None:
+    def __init__(self, conjunction_name, plot_pad_s=30, n_images=3, map_alt=110) -> None:
         """
         Make summary plots of THEMIS ASI-SAMPEX conjunctions using a
         pre-computed conjunction list.
@@ -34,6 +34,8 @@ class Summary:
             the "start" and "end" columns in the conjunction list.
         n_images: int
             The number of ASI images to plot in the first row.
+        map_alt: int
+            The footprint map altitude in kilometers.
         """
         self.conjunction_name = conjunction_name
         self.plot_pad_s = plot_pad_s
@@ -49,6 +51,7 @@ class Summary:
         Loop over every conjunction and make a summary plot.
         """
         self.current_date = date.min
+        self._init_plot()
 
         for (i, row) in self.conjunction_list.iterrows():
             if self.current_date != row['start'].date:
@@ -57,22 +60,53 @@ class Summary:
                 self.current_date = row['start'].date
             print(f'Processing {row["start"]} ({i}/{self.conjunction_list.shape[0]})')
 
-            time_range = [
+            self.time_range = [
                 row['start'] - timedelta(seconds=self.plot_pad_s),
                 row['end'] + timedelta(seconds=self.plot_pad_s)
             ]
+            dt = (self.time_range[1]-self.time_range[0]).total_seconds()/(self.n_images-1)
+            image_times = [self.time_range[0] + j*timedelta(seconds=dt) 
+                for j in range(self.n_images)]
 
-        image_times = [
-                    datetime(2008, 3, 4, 5, 49, 27),
-                    datetime(2008, 3, 4, 5, 49, 39),
-                    datetime(2008, 3, 4, 5, 50, 0)
-                    ]
-        n = len(image_times)
-        asi_array_code = 'THEMIS'
-        map_alt = 110
-        lon_bounds = (-122, -102)
-        lat_bounds = (56, 68)
-        color_bounds = None
+            # actual because self.image_times are calculates regardless of if there is an
+            # image or not.
+            actual_image_times = self._plot_images(image_times)
+        
+            self._clear_plot()  # After every iteration.
+        return
+
+    def _init_plot(self):
+        self.fig = plt.figure(figsize=(10, 5))
+        spec = gridspec.GridSpec(
+            nrows=2, ncols=self.n_images, figure=self.fig, height_ratios=(2, 1)
+            )
+
+        self.ax = self.n_images*[None]
+        for i, ax_i in enumerate(self.ax):
+            ax_i = self.fig.add_subplot(spec[0, i])
+            ax_i.get_xaxis().set_visible(False)
+            ax_i.get_yaxis().set_visible(False)
+        self.bx = self.fig.add_subplot(spec[-1, :])
+        self.bx.set_xlim(self.time_range)
+        self.bx.set_ylabel(f'>1 MeV electrons\n[counts/20 ms]')
+        return
+
+    def _clear_plot(self):
+        for ax_i in self.ax:
+            ax_i.clear()
+        self.bx.clear()
+        return
+
+    def _plot_images(self):
+        nearest_asi_image_times = []
+        z = zip(ax, self.image_times, string.ascii_uppercase[:self.n_images])
+        for i, (ax_i, image_time, subplot_letter) in enumerate(z):
+            asilib.make_map(lat_bounds=lat_bounds, lon_bounds=lon_bounds, ax=ax[i])
+            for themis_location_code in themis_location_codes:
+                t, _, _, _, _ = asilib.plot_map('THEMIS', themis_location_code, image_time, map_alt, 
+                    ax=ax[i], asi_label=False, color_bounds=None, pcolormesh_kwargs={'rasterized':True})
+                if themis_location_code == themis_location_codes[0]:
+                    nearest_asi_image_times.append(t)
 
 
     def _load_conjunctions(self):
@@ -100,50 +134,6 @@ class Summary:
 if __name__ == '__main__':
     conjunction_name = f'sampex_themis_asi_conjunctions_filtered.csv'
     s = Summary(conjunction_name)
-    
-color_footprint = False
-
-for _, row in conjunction_list.iterrows():
-    if current_date != row['start'].date:
-        # Load the SAMPEX-HILT data for this day.
-        hilt = sampex.HILT(row['start']).load()
-        current_date = row['start'].date
-    print(f'Processing {row["start"]}')
-
-    time_range = [
-        row['start'] - timedelta(minutes=0.25),
-        row['end'] + timedelta(minutes=0.25)
-    ]
-
-image_times = [
-            datetime(2008, 3, 4, 5, 49, 27),
-            datetime(2008, 3, 4, 5, 49, 39),
-            datetime(2008, 3, 4, 5, 50, 0)
-            ]
-n = len(image_times)
-asi_array_code = 'THEMIS'
-map_alt = 110
-lon_bounds = (-122, -102)
-lat_bounds = (56, 68)
-color_bounds = None
-
-fig = plt.figure(figsize=(10, 5))
-spec = gridspec.GridSpec(nrows=2, ncols=n, figure=fig, height_ratios=(2, 1))
-
-ax = n*[None]
-nearest_asi_image_times = []
-z = zip(ax, image_times, string.ascii_uppercase[:n])
-
-for i, (ax_i, image_time, subplot_letter) in enumerate(z):
-    ax[i] = fig.add_subplot(spec[0, i])
-    ax[i].get_xaxis().set_visible(False)
-    ax[i].get_yaxis().set_visible(False)
-    asilib.make_map(lat_bounds=lat_bounds, lon_bounds=lon_bounds, ax=ax[i])
-    for themis_location_code in themis_location_codes:
-        t, _, _, _, _ = asilib.plot_map('THEMIS', themis_location_code, image_time, map_alt, 
-            ax=ax[i], asi_label=False, color_bounds=None, pcolormesh_kwargs={'rasterized':True})
-        if themis_location_code == themis_location_codes[0]:
-            nearest_asi_image_times.append(t)
 
 
 # Now load, map, and interpolate the SAMPEX attitude data
@@ -183,11 +173,6 @@ def format_fn(tick_val, tick_pos):
     label = '\n'.join(values)
     return label
 
-bx = fig.add_subplot(spec[-1, :])
-bx.set_xlim(sampex_time_range)
-# bx.set_yscale('log')
-bx.set_ylim(9, 5*10**3)
-bx.set_ylabel(f'>1 MeV electrons\n[counts/20 ms]')
 bx.xaxis.set_major_formatter(FuncFormatter(format_fn))
 bx.xaxis.set_major_locator(matplotlib.dates.SecondLocator(interval=10))
 
