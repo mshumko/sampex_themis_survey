@@ -4,3 +4,4 @@
 config.ini
 sampex_themis_survey/plots/
 *.log
+plots/

@@ -45,6 +45,7 @@ class Summary:
         self.sampex_x_labels = {
             'L':'L_Shell', 'MLT':'MLT', 'Geo Lat':'GEO_Lat', 'Geo Lon':'GEO_Long'
             }
+        self.plot_save_dir = config['plots_dir'] / datetime.now().strftime('%Y%m%d')
         self._load_conjunctions()
         pass
 
@@ -53,10 +54,9 @@ class Summary:
         Loop over every conjunction and make a summary plot.
         """
         self.current_date = date.min
-        plot_save_dir = config['plots_dir'] / datetime.now().strftime('%Y%m%d')
-        if not plot_save_dir.exists():
-            plot_save_dir.mkdir(parents=True)
-            print(f'Created a {str(plot_save_dir)=} directory.')
+        if not self.plot_save_dir.exists():
+            self.plot_save_dir.mkdir(parents=True)
+            print(f'Created a {str(self.plot_save_dir)} plot directory.')
 
         self._init_plot()
 
@@ -96,7 +96,7 @@ class Summary:
                 f'themis_{self.row["asi"].lower()}_'
                 f'sampex_conjunction.png'
                 )
-            plt.savefig(plot_save_dir / plot_save_name)
+            plt.savefig(self.plot_save_dir / plot_save_name)
             with open(self.last_movie_path, 'w') as f:
                 f.write(self.row['start'].isoformat())
             self._clear_plot()  # After every iteration.
@@ -275,7 +275,7 @@ class Summary:
         self.conjunction_list['start'] = pd.to_datetime(self.conjunction_list['start'])
         self.conjunction_list['end'] = pd.to_datetime(self.conjunction_list['end'])
 
-        self.last_movie_path = pathlib.Path(config['data_dir'], 'last_summary_movie.txt')
+        self.last_movie_path = self.plot_save_dir / 'last_summary_movie.txt'
         if self.last_movie_path.exists():
             with open(self.last_movie_path, 'r') as f:
                 last_movie_time = dateutil.parser.parse(f.read())
