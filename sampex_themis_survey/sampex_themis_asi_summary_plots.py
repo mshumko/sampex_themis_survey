@@ -40,6 +40,7 @@ class Summary:
         self.conjunction_name = conjunction_name
         self.plot_pad_s = plot_pad_s
         self.n_images = n_images
+        self.map_alt = map_alt
         self.sampex_x_labels = {
             'L':'L_Shell', 'MLT':'MLT', 'Geo Lat':'GEO_Lat', 'Geo Lon':'GEO_Long'
             }
@@ -88,9 +89,11 @@ class Summary:
 
         self.ax = self.n_images*[None]
         for i, ax_i in enumerate(self.ax):
-            ax_i = self.fig.add_subplot(spec[0, i])
-            ax_i.get_xaxis().set_visible(False)
-            ax_i.get_yaxis().set_visible(False)
+            # Using direct self.ax[i] reference so the output is 
+            # saved into the self.ax list.
+            self.ax[i] = self.fig.add_subplot(spec[0, i])
+            self.ax[i].get_xaxis().set_visible(False)
+            self.ax[i].get_yaxis().set_visible(False)
         self.bx = self.fig.add_subplot(spec[-1, :])
         self.bx.set_ylabel(f'>1 MeV electrons\n[counts/20 ms]')
         plt.subplots_adjust(
@@ -108,13 +111,17 @@ class Summary:
         nearest_asi_image_times = []
 
         skymap = asilib.load_skymap('THEMIS', self.row['asi'], self.row['start'])
+        assert (
+            self.map_alt in skymap['FULL_MAP_ALTITUDE'] / 1000
+        ), f'{self.map_alt} km is not in skymap calibration altitudes: {skymap["FULL_MAP_ALTITUDE"]/1000} km'
+        alt_index = np.where(skymap['FULL_MAP_ALTITUDE'] / 1000 == self.map_alt)[0][0]
         lat_bounds = [
-            np.nanmin(skymap['FULL_MAP_LATITUDE']), 
-            np.nanmax(skymap['FULL_MAP_LATITUDE'])
+            np.nanmin(skymap['FULL_MAP_LATITUDE'][alt_index, :, :]), 
+            np.nanmax(skymap['FULL_MAP_LATITUDE'][alt_index, :, :])
             ]
         lon_bounds = [
-            np.nanmin(skymap['FULL_MAP_LATITUDE']), 
-            np.nanmax(skymap['FULL_MAP_LATITUDE'])
+            np.nanmin(skymap['FULL_MAP_LONGITUDE'][alt_index, :, :]), 
+            np.nanmax(skymap['FULL_MAP_LONGITUDE'][alt_index, :, :])
         ]
 
         z = zip(self.ax, image_times, string.ascii_uppercase[:self.n_images])
