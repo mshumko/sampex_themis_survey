@@ -18,24 +18,89 @@ import sampex
 from sampex_themis_survey import config
 from sampex_themis_survey.footprint import SAMPEX_footprint
 
-# Load conjunction dataset and filter by time if a few plots have already been made.
-conjunction_dir = pathlib.Path(config['data_dir'], 'data')
-conjunction_path = conjunction_dir / f'sampex_themis_asi_conjunctions_filtered.csv'
+class Summary:
+    def __init__(self, conjunction_name, plot_pad_s=30, n_images=3) -> None:
+        """
+        Make summary plots of THEMIS ASI-SAMPEX conjunctions using a
+        pre-computed conjunction list.
 
-conjunction_list = pd.read_csv(conjunction_path)
-conjunction_list['start'] = pd.to_datetime(conjunction_list['start'])
-conjunction_list['end'] = pd.to_datetime(conjunction_list['end'])
+        Parameters
+        ----------
+        conjunction_name: str
+            The filename of the conjunction csv file. The file must be in
+            the config['data_dir']/data/ directory.
+        plot_pad_s: float
+            Controls how much to expand the plot window, in seconds, beyond
+            the "start" and "end" columns in the conjunction list.
+        n_images: int
+            The number of ASI images to plot in the first row.
+        """
+        self.conjunction_name = conjunction_name
+        self.plot_pad_s = plot_pad_s
+        self.n_images = n_images
+        self.sampex_x_labels = {
+            'L':'L_Shell', 'MLT':'MLT', 'Geo Lat':'GEO_Lat', 'Geo Lon':'GEO_Long'
+            }
+        self._load_conjunctions()
+        pass
 
-current_date = date.min
+    def loop(self):
+        """
+        Loop over every conjunction and make a summary plot.
+        """
+        self.current_date = date.min
 
-last_movie_path = pathlib.Path(conjunction_dir, 'last_summary_movie.txt')
-if last_movie_path.exists():
-    with open(last_movie_path, 'r') as f:
-        last_movie_time = dateutil.parser.parse(f.read())
-    conjunction_list = conjunction_list[conjunction_list['start'] > last_movie_time]
+        for (i, row) in self.conjunction_list.iterrows():
+            if self.current_date != row['start'].date:
+                # Load the SAMPEX-HILT data for this day.
+                self.hilt = sampex.HILT(row['start']).load()
+                self.current_date = row['start'].date
+            print(f'Processing {row["start"]} ({i}/{self.conjunction_list.shape[0]})')
 
-sampex_x_labels = {'L':'L_Shell', 'MLT':'MLT', 'Geo Lat':'GEO_Lat', 'Geo Lon':'GEO_Long'}
+            time_range = [
+                row['start'] - timedelta(seconds=self.plot_pad_s),
+                row['end'] + timedelta(seconds=self.plot_pad_s)
+            ]
 
+        image_times = [
+                    datetime(2008, 3, 4, 5, 49, 27),
+                    datetime(2008, 3, 4, 5, 49, 39),
+                    datetime(2008, 3, 4, 5, 50, 0)
+                    ]
+        n = len(image_times)
+        asi_array_code = 'THEMIS'
+        map_alt = 110
+        lon_bounds = (-122, -102)
+        lat_bounds = (56, 68)
+        color_bounds = None
+
+
+    def _load_conjunctions(self):
+        """
+        Load conjunction csv dataset. If last_summary_movie.txt exists, filter 
+        the conjunctions by date and time to only events after the date in 
+        last_summary_movie.txt.
+        """
+        conjunction_dir = pathlib.Path(config['data_dir'], 'data')
+        conjunction_path = conjunction_dir / self.catalog_name
+
+        self.conjunction_list = pd.read_csv(conjunction_path)
+        self.conjunction_list['start'] = pd.to_datetime(self.conjunction_list['start'])
+        self.conjunction_list['end'] = pd.to_datetime(self.conjunction_list['end'])
+
+        last_movie_path = pathlib.Path(conjunction_dir, 'last_summary_movie.txt')
+        if last_movie_path.exists():
+            with open(last_movie_path, 'r') as f:
+                last_movie_time = dateutil.parser.parse(f.read())
+            self.conjunction_list = self.conjunction_list[
+                self.conjunction_list['start'] > last_movie_time
+                ]
+        return
+
+if __name__ == '__main__':
+    conjunction_name = f'sampex_themis_asi_conjunctions_filtered.csv'
+    s = Summary(conjunction_name)
+    
 color_footprint = False
 
 for _, row in conjunction_list.iterrows():
