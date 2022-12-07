@@ -19,7 +19,7 @@ from sampex_themis_survey import config
 from sampex_themis_survey.footprint import SAMPEX_footprint
 
 class Summary:
-    def __init__(self, conjunction_name, plot_pad_s=30, n_images=4, 
+    def __init__(self, conjunction_name, plot_pad_s=15, n_images=4, 
                 map_alt=110) -> None:
         """
         Make summary plots of THEMIS ASI-SAMPEX conjunctions using a
@@ -162,7 +162,9 @@ class Summary:
             self.map_alt in skymap['FULL_MAP_ALTITUDE'] / 1000
         ), f'{self.map_alt} km is not in skymap calibration altitudes: {skymap["FULL_MAP_ALTITUDE"]/1000} km'
         alt_index = np.where(skymap['FULL_MAP_ALTITUDE'] / 1000 == self.map_alt)[0][0]
-        idx_horizon = np.where(skymap['FULL_ELEVATION'] < 50)
+        idx_horizon = np.where(
+            (skymap['FULL_ELEVATION'] < 50) & np.isnan(skymap['FULL_ELEVATION'])
+            )
         lat_map = skymap['FULL_MAP_LATITUDE'][alt_index, :, :].copy()
         lon_map = skymap['FULL_MAP_LONGITUDE'][alt_index, :, :].copy()
         lat_map[idx_horizon] = np.nan
@@ -203,7 +205,6 @@ class Summary:
             ]
         self.bx.plot(hilt_flt.index, hilt_flt['counts'], c='k')
         self.bx.xaxis.set_minor_locator(matplotlib.dates.SecondLocator())
-        self.bx.set_xlim(self.time_range)
         return
 
     def _get_footprint(self):
@@ -254,8 +255,8 @@ class Summary:
         tick_time = matplotlib.dates.num2date(tick_val).replace(tzinfo=None)
         i_min_time = np.argmin(np.abs(self.footprint.index - tick_time))
         if np.abs(self.footprint.index[i_min_time] - tick_time).total_seconds() > 3:
-            # return ''
-            raise ValueError(f'Nearest timestamp to tick_time is more than 6 seconds away')
+            return tick_time.strftime('%H:%M:%S')
+            # raise ValueError(f'Nearest timestamp to tick_time is more than 6 seconds away')
         pd_index = self.footprint.index[i_min_time]
         # Cast np.array as strings so that it can insert the time string. 
         values = self.footprint.loc[pd_index, self.sampex_x_labels.values()].to_numpy().round(2).astype(str)
