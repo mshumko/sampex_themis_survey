@@ -158,19 +158,28 @@ class Summary:
 
         # Calculate the lat and lon bounds for pixels above 10 degree elevation.
         skymap = asilib.load_skymap('THEMIS', self.row['asi'], self.row['start'])
-        assert (
-            self.map_alt in skymap['FULL_MAP_ALTITUDE'] / 1000
-        ), f'{self.map_alt} km is not in skymap calibration altitudes: {skymap["FULL_MAP_ALTITUDE"]/1000} km'
-        alt_index = np.where(skymap['FULL_MAP_ALTITUDE'] / 1000 == self.map_alt)[0][0]
-        idx_horizon = np.where(
-            (skymap['FULL_ELEVATION'] < 50) & np.isnan(skymap['FULL_ELEVATION'])
+        # assert (
+        #     self.map_alt in skymap['FULL_MAP_ALTITUDE'] / 1000
+        # ), f'{self.map_alt} km is not in skymap calibration altitudes: {skymap["FULL_MAP_ALTITUDE"]/1000} km'
+        # alt_index = np.where(skymap['FULL_MAP_ALTITUDE'] / 1000 == self.map_alt)[0][0]
+        # idx_horizon = np.where(
+        #     (skymap['FULL_ELEVATION'] < 50) & np.isnan(skymap['FULL_ELEVATION'])
+        #     )
+        # lat_map = skymap['FULL_MAP_LATITUDE'][alt_index, :, :].copy()
+        # lon_map = skymap['FULL_MAP_LONGITUDE'][alt_index, :, :].copy()
+        # lat_map[idx_horizon] = np.nan
+        # lon_map[idx_horizon] = np.nan
+        # lat_bounds = [np.nanmin(lat_map), np.nanmax(lat_map)]
+        # lon_bounds = [np.nanmin(lon_map), np.nanmax(lon_map)]
+
+        lat_bounds = (
+            skymap['SITE_MAP_LATITUDE']-6,
+            skymap['SITE_MAP_LATITUDE']+6
             )
-        lat_map = skymap['FULL_MAP_LATITUDE'][alt_index, :, :].copy()
-        lon_map = skymap['FULL_MAP_LONGITUDE'][alt_index, :, :].copy()
-        lat_map[idx_horizon] = np.nan
-        lon_map[idx_horizon] = np.nan
-        lat_bounds = [np.nanmin(lat_map), np.nanmax(lat_map)]
-        lon_bounds = [np.nanmin(lon_map), np.nanmax(lon_map)]
+        lon_bounds = (
+            skymap['SITE_MAP_LONGITUDE']-12,
+            skymap['SITE_MAP_LONGITUDE']+12
+            )
 
         z = zip(self.ax, image_times, string.ascii_uppercase[:self.n_images])
         for i, (ax_i, image_time, subplot_letter) in enumerate(z):
