@@ -184,8 +184,14 @@ class Summary:
         z = zip(self.ax, image_times, string.ascii_uppercase[:self.n_images])
         for i, (ax_i, image_time, subplot_letter) in enumerate(z):
             asilib.make_map(lat_bounds=lat_bounds, lon_bounds=lon_bounds, ax=ax_i)
-            t, _, _, _, _ = asilib.plot_map('THEMIS', self.row['asi'], image_time, self.map_alt, 
-                ax=ax_i, asi_label=False, color_bounds=None, pcolormesh_kwargs={'rasterized':True})
+            try:
+                t, _, _, _, _ = asilib.plot_map('THEMIS', self.row['asi'], image_time, self.map_alt, 
+                    ax=ax_i, asi_label=False, color_bounds=None, pcolormesh_kwargs={'rasterized':True})
+            except AssertionError as err:
+                if '0 number of time stamps were found within 3 seconds' in str(err):
+                    continue
+                else:
+                    raise
             nearest_asi_image_times.append(t)
             ax_i.text(
                 0, 0.98, f'({subplot_letter}) {t.strftime("%H:%M:%S")}',
@@ -232,7 +238,7 @@ class Summary:
         self.footprint = pd.merge_asof(
             asi_times_df, self.footprint, 
             left_index=True, right_index=True, 
-            tolerance=pd.Timedelta(seconds=1), 
+            tolerance=pd.Timedelta(seconds=2), 
             direction='nearest'
             )
         self.footprint = self.footprint.interpolate(
