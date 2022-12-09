@@ -14,6 +14,7 @@ import numpy as np
 import pandas as pd
 import asilib
 import sampex
+import aacgmv2
 
 from sampex_themis_survey import config
 from sampex_themis_survey.footprint import SAMPEX_footprint
@@ -136,7 +137,8 @@ class Summary:
         self.bx.text(
             0, 0.99, f'({string.ascii_uppercase[self.n_images]}) '
             f'THEMIS-{self.row["asi"].upper()} keogram along footprint', 
-            va='top', transform=self.bx.transAxes, weight='bold', fontsize=15
+            va='top', transform=self.bx.transAxes, weight='bold', fontsize=12,
+            color='white'
             )
             
         self.cx.xaxis.set_major_formatter(FuncFormatter(self._format_fn))
@@ -145,7 +147,7 @@ class Summary:
         self.cx.xaxis.set_label_coords(-0.07, -0.09)
         self.cx.text(
             0, 0.99, f'({string.ascii_uppercase[self.n_images+1]}) SAMPEX-HILT', 
-            va='top', transform=self.cx.transAxes, weight='bold', fontsize=15
+            va='top', transform=self.cx.transAxes, weight='bold', fontsize=12
             )
         self.cx.set_xlim(self.actual_image_times[0], self.actual_image_times[-1])
         self.cx.set_ylabel(f'>1 MeV electrons\n[counts/20 ms]')
@@ -181,7 +183,7 @@ class Summary:
         # lon_bounds = [np.nanmin(lon_map), np.nanmax(lon_map)]
 
         asilib.plot_keogram('THEMIS', self.row['asi'], self.time_range, 
-            ax=self.bx, map_alt=self.map_alt, title=False,
+            ax=self.bx, map_alt=self.map_alt, title=False, aacgm=True,
             path=self.footprint.loc[:, ['GEO_Lat', 'GEO_Long']].to_numpy()
             )
 
@@ -208,12 +210,13 @@ class Summary:
             nearest_asi_image_times.append(t)
             ax_i.text(
                 0, 0.98, f'({subplot_letter}) {t.strftime("%H:%M:%S")}',
-                transform=ax_i.transAxes, weight='bold', fontsize=15, va='top',
+                transform=ax_i.transAxes, weight='bold', fontsize=12, va='top',
                 color='purple'
                 )
         return nearest_asi_image_times
     
     def _plot_footprint(self):
+        # On the images
         for (ax_i, t) in zip(self.ax, self.actual_image_times):
             ax_i.plot(self.footprint.loc[:, 'GEO_Long'], self.footprint.loc[:, 'GEO_Lat'], 'r:')
 
@@ -224,6 +227,16 @@ class Summary:
                 self.footprint.loc[footprint_time, 'GEO_Lat'],
                 c='red', s=150, marker='.',
                 )
+
+        # On the keogram
+        self.footprint['mlat'] = aacgmv2.convert_latlon_arr(
+            self.footprint.loc[:, 'GEO_Lat'],
+            self.footprint.loc[:, 'GEO_Long'],
+            self.map_alt,
+            self.time_range[0],
+            method_code="G2A",
+        )[0]
+        self.bx.plot(self.footprint.index, self.footprint.mlat, 'r:')
         return
 
     def _plot_hilt(self):

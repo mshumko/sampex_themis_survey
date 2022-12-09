@@ -8,5 +8,6 @@ sampex==1.0.0
 aurora-asi-lib==0.12.1
 pyspedas==1.3.20
 cdflib
+aacgmv2
 
 -e . # Install this project
