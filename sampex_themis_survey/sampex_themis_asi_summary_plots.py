@@ -75,13 +75,13 @@ class Summary:
             image_times = [self.time_range[0] + j*timedelta(seconds=dt) 
                 for j in range(self.n_images)]
 
+            self._get_footprint()
             # actual because self.image_times are calculates regardless of if there is an
             # image or not.
             self.actual_image_times = self._plot_images(image_times)
-            self._get_footprint()
             self._plot_footprint()
             self._plot_hilt()
-            self._format_bx()
+            self._format_subplots()
             self._plot_connecting_lines()
             plt.suptitle(
                 f'{self.row["start"].date()} | '
@@ -107,11 +107,10 @@ class Summary:
         Initialize a plot with two rows. First row for self.n_images number of
         images and the second row the SAMPEX HILT data.
         """
-        self.fig = plt.figure(figsize=(10, 5))
+        self.fig = plt.figure(figsize=(10, 5.5))
         spec = gridspec.GridSpec(
-            nrows=2, ncols=self.n_images, figure=self.fig, height_ratios=(2, 1)
+            nrows=3, ncols=self.n_images, figure=self.fig, height_ratios=(2, 1, 1)
             )
-
         self.ax = self.n_images*[None]
         for i, ax_i in enumerate(self.ax):
             # Using direct self.ax[i] reference so the output is 
@@ -119,29 +118,37 @@ class Summary:
             self.ax[i] = self.fig.add_subplot(spec[0, i])
             self.ax[i].get_xaxis().set_visible(False)
             self.ax[i].get_yaxis().set_visible(False)
-        self.bx = self.fig.add_subplot(spec[-1, :])
-        self.bx.set_ylabel(f'>1 MeV electrons\n[counts/20 ms]')
+
+        self.bx = self.fig.add_subplot(spec[1, :])
+        self.bx.get_xaxis().set_visible(False)
+        self.cx = self.fig.add_subplot(spec[-1, :], sharex=self.bx)
         plt.subplots_adjust(
             hspace=0.10, wspace=0.01, top=0.93, bottom=0.2, left=0.09, right=0.95
             )
         return
 
-    def _format_bx(self):
+    def _format_subplots(self):
         """
         Format the bx subplot with x-axis labels and connect to the x-axis
         formatter function.
         """
-        self.bx.xaxis.set_major_formatter(FuncFormatter(self._format_fn))
-        self.bx.xaxis.set_major_locator(matplotlib.dates.SecondLocator(interval=10))
-
-        self.bx.set_xlabel('\n'.join(['Time'] + list(self.sampex_x_labels.keys())))
-        self.bx.xaxis.set_label_coords(-0.07, -0.09)
-
+        self.bx.set_ylabel(f'mlat [deg]')
         self.bx.text(
-            0, 0.99, f'({string.ascii_uppercase[self.n_images]}) SAMPEX-HILT', 
+            0, 0.99, f'({string.ascii_uppercase[self.n_images]}) '
+            f'THEMIS-{self.row["asi"].upper()} keogram along footprint', 
             va='top', transform=self.bx.transAxes, weight='bold', fontsize=15
             )
-        self.bx.set_xlim(self.actual_image_times[0], self.actual_image_times[-1])
+            
+        self.cx.xaxis.set_major_formatter(FuncFormatter(self._format_fn))
+        self.cx.xaxis.set_major_locator(matplotlib.dates.SecondLocator(interval=10))
+        self.cx.set_xlabel('\n'.join(['Time'] + list(self.sampex_x_labels.keys())))
+        self.cx.xaxis.set_label_coords(-0.07, -0.09)
+        self.cx.text(
+            0, 0.99, f'({string.ascii_uppercase[self.n_images+1]}) SAMPEX-HILT', 
+            va='top', transform=self.cx.transAxes, weight='bold', fontsize=15
+            )
+        self.cx.set_xlim(self.actual_image_times[0], self.actual_image_times[-1])
+        self.cx.set_ylabel(f'>1 MeV electrons\n[counts/20 ms]')
         return
 
     def _clear_plot(self):
@@ -151,6 +158,7 @@ class Summary:
         for ax_i in self.ax:
             ax_i.clear()
         self.bx.clear()
+        self.cx.clear()
         return
 
     def _plot_images(self, image_times):
@@ -171,6 +179,11 @@ class Summary:
         # lon_map[idx_horizon] = np.nan
         # lat_bounds = [np.nanmin(lat_map), np.nanmax(lat_map)]
         # lon_bounds = [np.nanmin(lon_map), np.nanmax(lon_map)]
+
+        asilib.plot_keogram('THEMIS', self.row['asi'], self.time_range, 
+            ax=self.bx, map_alt=self.map_alt, title=False,
+            path=self.footprint.loc[:, ['GEO_Lat', 'GEO_Long']].to_numpy()
+            )
 
         lat_bounds = (
             skymap['SITE_MAP_LATITUDE']-6,
@@ -218,8 +231,8 @@ class Summary:
             (self.hilt.index > self.time_range[0]) &
             (self.hilt.index <= self.time_range[1])
             ]
-        self.bx.plot(hilt_flt.index, hilt_flt['counts'], c='k')
-        self.bx.xaxis.set_minor_locator(matplotlib.dates.SecondLocator())
+        self.cx.plot(hilt_flt.index, hilt_flt['counts'], c='k')
+        self.cx.xaxis.set_minor_locator(matplotlib.dates.SecondLocator())
         return
 
     def _get_footprint(self):
@@ -259,6 +272,7 @@ class Summary:
                 ls='--')
             ax_i.add_artist(line)
             self.bx.axvline(image_time_numeric, c='k', ls='--', alpha=1) 
+            self.cx.axvline(image_time_numeric, c='k', ls='--', alpha=1) 
         return
 
     def _format_fn(self, tick_val, tick_pos):
