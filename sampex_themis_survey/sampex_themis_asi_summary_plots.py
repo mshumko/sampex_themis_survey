@@ -75,8 +75,13 @@ class Summary:
             dt = (self.time_range[1]-self.time_range[0]).total_seconds()/(self.n_images-1)
             image_times = [self.time_range[0] + j*timedelta(seconds=dt) 
                 for j in range(self.n_images)]
-
-            self._get_footprint()
+            try:
+                self._get_footprint()
+            except AssertionError as err:
+                if '0 number of time stamps were found in time_range' in str(err):
+                    continue
+                else:
+                    raise
             # actual because self.image_times are calculates regardless of if there is an
             # image or not.
             self.actual_image_times = self._plot_images(image_times)
@@ -98,7 +103,7 @@ class Summary:
                 f'sampex_conjunction.png'
                 )
             plt.savefig(self.plot_save_dir / plot_save_name)
-            with open(self.last_movie_path, 'w') as f:
+            with open(self.last_plot_path, 'w') as f:
                 f.write(self.row['start'].isoformat())
             self._clear_plot()  # After every iteration.
         return
@@ -308,9 +313,9 @@ class Summary:
 
     def _load_conjunctions(self):
         """
-        Load conjunction csv dataset. If last_summary_movie.txt exists, filter 
+        Load conjunction csv dataset. If last_summary_plot.txt exists, filter 
         the conjunctions by date and time to only events after the date in 
-        last_summary_movie.txt.
+        last_summary_plot.txt.
         """
         conjunction_path = config['data_dir'] / self.conjunction_name
 
@@ -318,12 +323,12 @@ class Summary:
         self.conjunction_list['start'] = pd.to_datetime(self.conjunction_list['start'])
         self.conjunction_list['end'] = pd.to_datetime(self.conjunction_list['end'])
 
-        self.last_movie_path = self.plot_save_dir / 'last_summary_movie.txt'
-        if self.last_movie_path.exists():
-            with open(self.last_movie_path, 'r') as f:
-                last_movie_time = dateutil.parser.parse(f.read())
+        self.last_plot_path = self.plot_save_dir / 'last_summary_plot.txt'
+        if self.last_plot_path.exists():
+            with open(self.last_plot_path, 'r') as f:
+                last_plot_time = dateutil.parser.parse(f.read())
             self.conjunction_list = self.conjunction_list[
-                self.conjunction_list['start'] > last_movie_time
+                self.conjunction_list['start'] > last_plot_time
                 ]
         return
 
