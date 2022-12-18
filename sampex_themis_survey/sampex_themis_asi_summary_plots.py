@@ -85,6 +85,8 @@ class Summary:
             # actual because self.image_times are calculates regardless of if there is an
             # image or not.
             self.actual_image_times = self._plot_images(image_times)
+            if self.actual_image_times is None:
+                continue
             self._plot_footprint()
             self._plot_hilt()
             self._format_subplots()
@@ -187,10 +189,16 @@ class Summary:
         # lat_bounds = [np.nanmin(lat_map), np.nanmax(lat_map)]
         # lon_bounds = [np.nanmin(lon_map), np.nanmax(lon_map)]
 
-        asilib.plot_keogram('THEMIS', self.row['asi'], self.time_range, 
-            ax=self.bx, map_alt=self.map_alt, title=False, aacgm=True,
-            path=self.footprint.loc[:, ['GEO_Lat', 'GEO_Long']].to_numpy()
-            )
+        try:
+            asilib.plot_keogram('THEMIS', self.row['asi'], self.time_range, 
+                ax=self.bx, map_alt=self.map_alt, title=False, aacgm=True,
+                path=self.footprint.loc[:, ['GEO_Lat', 'GEO_Long']].to_numpy()
+                )
+        except ValueError as err:
+            if 'The path is empty.' in str(err):
+                return None
+            else:
+                raise
 
         lat_bounds = (
             skymap['SITE_MAP_LATITUDE']-6,
