@@ -226,6 +226,8 @@ class Summary:
                 transform=ax_i.transAxes, weight='bold', fontsize=12, va='top',
                 color='purple'
                 )
+        if len(nearest_asi_image_times) == 0:
+            nearest_asi_image_times = None
         return nearest_asi_image_times
     
     def _plot_footprint(self):
